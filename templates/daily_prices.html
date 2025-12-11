@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Daily Prices - NGI Chart Lab{% endblock %}
+
+{% block head %}
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' }
+                    }
+                }
+            }
+        };
+    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/daily_prices_pro.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="daily-prices-pro-container bg-white text-gray-900 min-h-[70vh]">
+    <div class="py-4">
+        <div class="flex gap-4">
+            <!-- Sidebar -->
+            <aside class="w-80 flex-shrink-0 bg-white border border-gray-300 flex flex-col max-h-[calc(100vh-10rem)] overflow-hidden ml-4">
+                <div class="flex border-b border-gray-300 bg-gray-100">
+                    <button data-mode="standard" class="mode-tab flex-1 py-2 text-xs font-semibold uppercase text-gray-900 border-b-2 border-gray-900 bg-white">Single</button>
+                    <button data-mode="compare" class="mode-tab flex-1 py-2 text-xs font-semibold uppercase text-gray-600 hover:bg-gray-50">Multiple</button>
+                    <button data-mode="seasonality" class="mode-tab flex-1 py-2 text-xs font-semibold uppercase text-gray-600 hover:bg-gray-50">Yearly</button>
+                </div>
+                <div class="p-4 flex-1 overflow-y-auto custom-scroll space-y-4">
+                    <div id="dateSection">
+                        <label class="block text-xs font-semibold text-gray-700 uppercase mb-1">Date Range</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="date" id="startDate" class="w-full px-2 py-1 border border-gray-300 text-sm focus:outline-none focus:border-gray-900">
+                            <input type="date" id="endDate" class="w-full px-2 py-1 border border-gray-300 text-sm focus:outline-none focus:border-gray-900">
+                        </div>
+                    </div>
+
+                    <div id="seasonalitySection" class="hidden">
+                        <label class="block text-xs font-semibold text-gray-700 uppercase mb-1">Analysis Year</label>
+                        <select id="analysisYear" class="w-full px-2 py-1 border border-gray-300 text-sm bg-white mb-2"></select>
+                        <div class="flex items-center space-x-2 bg-gray-50 p-2 border border-gray-200">
+                            <input type="checkbox" id="showFiveYear" class="w-4 h-4">
+                            <label for="showFiveYear" class="text-xs font-medium text-gray-700 cursor-pointer">Show 5-Year Range</label>
+                        </div>
+                    </div>
+
+                    <hr class="border-gray-200">
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 uppercase mb-1">Location</label>
+                        <select id="regionSelect" class="w-full px-2 py-1 border border-gray-300 text-sm bg-white mb-2"></select>
+                        <div class="flex gap-2">
+                            <select id="locationSelect" class="w-full px-2 py-1 border border-gray-300 text-sm bg-white"></select>
+                            <button id="addToCompareBtn" class="hidden px-2 py-1 bg-gray-200 text-gray-900 text-sm font-semibold hover:bg-gray-300 border border-gray-300">+</button>
+                        </div>
+                    </div>
+
+                    <div id="compareListSection" class="hidden bg-gray-50 border border-gray-200 p-3 min-h-[100px]">
+                        <label class="block text-xs font-semibold text-gray-700 uppercase mb-2">Selected Hubs</label>
+                        <div id="compareListContainer" class="space-y-2">
+                            <p class="text-xs text-gray-500 italic" id="emptyCompareMsg">No locations added.</p>
+                        </div>
+                    </div>
+
+                    <button id="analyzeBtn" class="w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold py-2 border border-gray-900">
+                        Submit
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Main content - Chart only -->
+            <div class="flex-1 flex flex-col gap-4 pr-4 max-w-[66%]">
+                <div class="bg-white p-6 border border-gray-300 flex-none">
+                    <div class="mb-6">
+                        <div class="flex justify-between items-start mb-1">
+                            <h3 id="chartTitle" class="text-xl font-bold text-gray-900 leading-tight">NGI Daily Spot Prices</h3>
+                            <label class="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+                                <input type="checkbox" id="toggleYZoom" class="w-4 h-4">
+                                <span class="font-medium">Y-Axis Zoom</span>
+                            </label>
+                        </div>
+                        <p id="chartSubtitle" class="text-sm text-gray-600 mb-4">Select a location and date range to begin</p>
+                        <div id="customLegend" class="flex gap-6 text-xs font-medium"></div>
+                    </div>
+                    <div id="chartContainer" class="w-full h-[400px]"></div>
+                    <div class="flex justify-between items-center mt-2 text-xs text-gray-500">
+                        <span class="font-semibold">Source: NGI</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data table - Full width below -->
+        <div class="mt-4 px-4">
+            <div class="bg-white border border-gray-300 flex flex-col overflow-hidden">
+                <div class="px-4 py-2 border-b border-gray-300 bg-gray-100 flex justify-between items-center flex-none">
+                    <h3 class="font-semibold text-gray-900 text-sm">Data Table</h3>
+                    <div class="space-x-3">
+                        <button id="copyTableBtn" class="text-xs font-semibold text-gray-700 hover:text-gray-900 underline">Copy Full Table</button>
+                        <button id="copyFlowBtn" class="text-xs font-semibold text-gray-700 hover:text-gray-900 underline">Copy Prices By Flow Date</button>
+                        <button id="copyTradeBtn" class="text-xs font-semibold text-gray-700 hover:text-gray-900 underline">Copy Prices By Trade Date</button>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-auto custom-scroll max-h-96">
+                    <table class="w-full text-sm text-left whitespace-nowrap border-collapse">
+                        <thead class="bg-gray-100 text-gray-700 font-semibold sticky top-0 z-10">
+                            <tr id="tableHeaderRow"></tr>
+                        </thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="daily-prices-log fixed bottom-0 left-0 right-0 z-40">
+    <div id="logDrawer" class="bg-gray-900 border-t border-gray-700 transition-all duration-300 ease-in-out h-0 overflow-hidden">
+        <div id="logContent" class="h-64 p-4 font-mono text-xs overflow-y-auto custom-scroll text-gray-300"></div>
+    </div>
+    <button id="logToggle" class="w-full bg-gray-800 border-t border-gray-700 h-8 flex items-center justify-between px-4 text-xs font-medium text-gray-300 hover:text-white hover:bg-gray-700">
+        <div class="flex items-center gap-3">
+            <div id="statusDot" class="w-2 h-2 bg-green-500"></div>
+            <span id="statusLabel" class="uppercase tracking-wider font-semibold">Ready</span>
+            <span class="w-px h-3 bg-gray-600 mx-1"></span>
+            <span id="lastLogMsg" class="font-mono truncate max-w-md text-gray-400">System ready</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <svg id="logArrow" class="transition-transform duration-300" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
+        </div>
+    </button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        document.body.classList.add('daily-prices-pro-page');
+    </script>
+    <script src="{{ url_for('static', filename='js/daily_prices.js') }}"></script>
+{% endblock %}

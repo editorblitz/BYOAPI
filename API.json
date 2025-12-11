@@ -1,0 +1,2830 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "NGI Data Services API",
+        "version": "0.0.1",
+        "description": "This API is available to all NGI data clients at no additional charge. We will continue to improve this service over time to keep making integrating NGI data as easy as possible. To begin using the API, you'll need an email address associated with an active NGI data subscription and an API key. If you don't have an API key yet, please reach out to ngidata@naturalgasintel.com."
+    },
+    "paths": {
+        "/auth": {
+            "post": {
+                "operationId": "auth_create",
+                "description": "Takes a set of user credentials and returns an access and refresh JSON web\ntoken pair to prove the authentication of those credentials.",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "csv",
+                                "json",
+                                "txt"
+                            ]
+                        }
+                    }
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NGITokenObtainPair"
+                            }
+                        },
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NGITokenObtainPair"
+                            }
+                        },
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NGITokenObtainPair"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Token"
+                                },
+                                "examples": {
+                                    "TokenExample": {
+                                        "value": {
+                                            "refresh": "hraekqex4fxj3v97rjuiut4botk65ig85cin5wg1x4wzdgntpvl2asytum7xzr9w35mq6bwhjs0uuiu5y438gk88fwtjs5dwf5bkstar5os7s2dds5azvsuctdd4n4h7uem0v9awqxk7qzj596ca2lwumtevxbty4axulkvmy2j0mixxaexoav5ulvx8un14jlpjoeb9r1s5pz5vf",
+                                            "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJmcmVzaI6MTYzNjc6ZmFsc2UsImlhdCYjc4xMDk0MCwianRpIjoiNmIyZTYzOGYtNmM4My00CILWE1YTAtNzc2N2I0ZWQxN2YzIiwidHlwZSI6ImFjY2VzcyIsImlkZW50aXR5IjoibmF0aGFuLmhhcnJpc29uQiLCJuYmYiOjE2MzY3MTA5NDAsImV4cCI6MTYzNjc5NzM0MH0.Gxw3P-oH-KHG5hdHVyYWxnYXNpbnRlbC5jb208yV6VQBjTu6jGS4YlhYlugWl52ySgDSk"
+                                        },
+                                        "summary": "Token Example"
+                                    }
+                                }
+                            },
+                            "text/csv": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Token"
+                                }
+                            },
+                            "text/plain": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Token"
+                                }
+                            }
+                        },
+                        "description": "Accepted"
+                    }
+                }
+            }
+        },
+        "/bidweekDatafeed.json": {
+            "get": {
+                "operationId": "bidweekDatafeed.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Bidweek Survey"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/bidweekDatafeed.txt": {
+            "get": {
+                "operationId": "bidweekDatafeed.txt_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Bidweek Survey"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/bidweekHistoricalData.json": {
+            "get": {
+                "operationId": "bidweekHistoricalData.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "start_date",
+                        "schema": {
+                            "type": "string",
+                            "default": "Defaults to today’s date - 365 days"
+                        },
+                        "description": "Start Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "end_date",
+                        "schema": {
+                            "type": "string",
+                            "default": "Today"
+                        },
+                        "description": "End Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "location",
+                        "schema": {
+                            "type": "string",
+                            "default": "SLAHH"
+                        },
+                        "description": "Location (pointcode). Defaults to Henry Hub (SLAHH)",
+                        "examples": {
+                            "Accepted": {
+                                "value": "SLAHH"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Bidweek Survey"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/bidweekLocations": {
+            "get": {
+                "operationId": "bidweekLocations_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "csv",
+                                "json",
+                                "txt"
+                            ]
+                        }
+                    }
+                ],
+                "tags": [
+                    "Bidweek Survey"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/dailyDatafeed.json": {
+            "get": {
+                "operationId": "dailyDatafeed.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "trade_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Trade Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Daily GPI"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/dailyDatafeed.txt": {
+            "get": {
+                "operationId": "dailyDatafeed.txt_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "trade_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Trade Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Daily GPI"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/dailyHistoricalData.json": {
+            "get": {
+                "operationId": "dailyHistoricalData.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "start_date",
+                        "schema": {
+                            "type": "string",
+                            "default": "Defaults to today’s date - 365 days"
+                        },
+                        "description": "Start Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "end_date",
+                        "schema": {
+                            "type": "string",
+                            "default": "Today"
+                        },
+                        "description": "End Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "location",
+                        "schema": {
+                            "type": "string",
+                            "default": "SLAHH"
+                        },
+                        "description": "Location (pointcode). Defaults to Henry Hub (SLAHH)",
+                        "examples": {
+                            "Accepted": {
+                                "value": "SLAHH"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Daily GPI"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/dailyLocations": {
+            "get": {
+                "operationId": "dailyLocations_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "csv",
+                                "json",
+                                "txt"
+                            ]
+                        }
+                    }
+                ],
+                "tags": [
+                    "Daily GPI"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/forwardDatafeed.json": {
+            "get": {
+                "operationId": "forwardDatafeed.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "trade_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Trade Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Forward Look"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/forwardDatafeed.xls": {
+            "get": {
+                "operationId": "forwardDatafeed.xls_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "trade_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Trade Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Forward Look"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/forwardEODDatafeed.json": {
+            "get": {
+                "operationId": "forwardEODDatafeed.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "trade_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Trade Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Forward Look"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/forwardEODDatafeed.xls": {
+            "get": {
+                "operationId": "forwardEODDatafeed.xls_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "trade_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Trade Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Forward Look"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/forwardEODHistoricalData.json": {
+            "get": {
+                "operationId": "forwardEODHistoricalData.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "start_date",
+                        "schema": {
+                            "type": "string",
+                            "default": "Defaults to today’s date - 365 days"
+                        },
+                        "description": "Start Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "end_date",
+                        "schema": {
+                            "type": "string",
+                            "default": "Today"
+                        },
+                        "description": "End Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "location",
+                        "schema": {
+                            "type": "string",
+                            "default": "SLAHH"
+                        },
+                        "description": "Location (pointcode). Defaults to Henry Hub (SLAHH)",
+                        "examples": {
+                            "Accepted": {
+                                "value": "SLAHH"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "trade_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Trade Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "contract",
+                        "schema": {
+                            "type": "string",
+                            "default": "Defaults to current prompt month"
+                        },
+                        "description": "Contract (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Forward Look"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/forwardHistoricalData.json": {
+            "get": {
+                "operationId": "forwardHistoricalData.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "start_date",
+                        "schema": {
+                            "type": "string",
+                            "default": "Defaults to today’s date - 365 days"
+                        },
+                        "description": "Start Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "end_date",
+                        "schema": {
+                            "type": "string",
+                            "default": "Today"
+                        },
+                        "description": "End Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "location",
+                        "schema": {
+                            "type": "string",
+                            "default": "SLAHH"
+                        },
+                        "description": "Location (pointcode). Defaults to Henry Hub (SLAHH)",
+                        "examples": {
+                            "Accepted": {
+                                "value": "SLAHH"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "trade_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Trade Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "contract",
+                        "schema": {
+                            "type": "string",
+                            "default": "Defaults to current prompt month"
+                        },
+                        "description": "Contract (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Forward Look"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/forwardLocations": {
+            "get": {
+                "operationId": "forwardLocations_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "csv",
+                                "json",
+                                "txt"
+                            ]
+                        }
+                    }
+                ],
+                "tags": [
+                    "Forward Look"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/lngArbCurvesDatafeed.csv": {
+            "get": {
+                "operationId": "lngArbCurvesDatafeed.csv_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "LNG+ Data"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/lngArbCurvesDatafeed.json": {
+            "get": {
+                "operationId": "lngArbCurvesDatafeed.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "LNG+ Data"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/lngDESPricesDatafeed.csv": {
+            "get": {
+                "operationId": "lngDESPricesDatafeed.csv_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "LNG+ Data"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/lngDESPricesDatafeed.json": {
+            "get": {
+                "operationId": "lngDESPricesDatafeed.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "LNG+ Data"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/lngFlowDatafeed.csv": {
+            "get": {
+                "operationId": "lngFlowDatafeed.csv_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "LNG+ Data"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/lngFlowDatafeed.json": {
+            "get": {
+                "operationId": "lngFlowDatafeed.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "LNG+ Data"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/lngLandedCostsDatafeed.csv": {
+            "get": {
+                "operationId": "lngLandedCostsDatafeed.csv_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "LNG+ Data"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/lngLandedCostsDatafeed.json": {
+            "get": {
+                "operationId": "lngLandedCostsDatafeed.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "LNG+ Data"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/lngLandedPricesDatafeed.csv": {
+            "get": {
+                "operationId": "lngLandedPricesDatafeed.csv_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "LNG+ Data"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/lngLandedPricesDatafeed.json": {
+            "get": {
+                "operationId": "lngLandedPricesDatafeed.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "LNG+ Data"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/lngNetbackDatafeed.csv": {
+            "get": {
+                "operationId": "lngNetbackDatafeed.csv_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "LNG+ Data"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/lngNetbackDatafeed.json": {
+            "get": {
+                "operationId": "lngNetbackDatafeed.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "LNG+ Data"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/lngShippingCostsDatafeed.csv": {
+            "get": {
+                "operationId": "lngShippingCostsDatafeed.csv_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "LNG+ Data"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/lngShippingCostsDatafeed.json": {
+            "get": {
+                "operationId": "lngShippingCostsDatafeed.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "LNG+ Data"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/lngSlopesDatafeed.csv": {
+            "get": {
+                "operationId": "lngSlopesDatafeed.csv_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "LNG+ Data"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/lngSlopesDatafeed.json": {
+            "get": {
+                "operationId": "lngSlopesDatafeed.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "LNG+ Data"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/lngVesselRateCurvesDatafeed.csv": {
+            "get": {
+                "operationId": "lngVesselRateCurvesDatafeed.csv_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "LNG+ Data"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/lngVesselRateCurvesDatafeed.json": {
+            "get": {
+                "operationId": "lngVesselRateCurvesDatafeed.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "LNG+ Data"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/mexicoBidweekDatafeed.csv": {
+            "get": {
+                "operationId": "mexicoBidweekDatafeed.csv_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Mexico GPI"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/mexicoBidweekDatafeed.json": {
+            "get": {
+                "operationId": "mexicoBidweekDatafeed.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Mexico GPI"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/mexicoBidweekHistoricalData.json": {
+            "get": {
+                "operationId": "mexicoBidweekHistoricalData.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "start_date",
+                        "schema": {
+                            "type": "string",
+                            "default": "Defaults to today’s date - 365 days"
+                        },
+                        "description": "Start Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "end_date",
+                        "schema": {
+                            "type": "string",
+                            "default": "Today"
+                        },
+                        "description": "End Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "location",
+                        "schema": {
+                            "type": "string",
+                            "default": "SLAHH"
+                        },
+                        "description": "Location (pointcode). Defaults to Henry Hub (SLAHH)",
+                        "examples": {
+                            "Accepted": {
+                                "value": "SLAHH"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Mexico GPI"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/mexicoBidweekLocations": {
+            "get": {
+                "operationId": "mexicoBidweekLocations_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "csv",
+                                "json",
+                                "txt"
+                            ]
+                        }
+                    }
+                ],
+                "tags": [
+                    "Mexico GPI"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/mexicoDailyDatafeed.csv": {
+            "get": {
+                "operationId": "mexicoDailyDatafeed.csv_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "trade_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Trade Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Mexico GPI"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/mexicoDailyDatafeed.json": {
+            "get": {
+                "operationId": "mexicoDailyDatafeed.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "trade_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Trade Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Mexico GPI"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/mexicoDailyHistoricalData.json": {
+            "get": {
+                "operationId": "mexicoDailyHistoricalData.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "start_date",
+                        "schema": {
+                            "type": "string",
+                            "default": "Defaults to today’s date - 365 days"
+                        },
+                        "description": "Start Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "end_date",
+                        "schema": {
+                            "type": "string",
+                            "default": "Today"
+                        },
+                        "description": "End Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "location",
+                        "schema": {
+                            "type": "string",
+                            "default": "SLAHH"
+                        },
+                        "description": "Location (pointcode). Defaults to Henry Hub (SLAHH)",
+                        "examples": {
+                            "Accepted": {
+                                "value": "SLAHH"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Mexico GPI"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/mexicoDailyLocations": {
+            "get": {
+                "operationId": "mexicoDailyLocations_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "csv",
+                                "json",
+                                "txt"
+                            ]
+                        }
+                    }
+                ],
+                "tags": [
+                    "Mexico GPI"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/mexicoForwardDatafeed.csv": {
+            "get": {
+                "operationId": "mexicoForwardDatafeed.csv_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "trade_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Trade Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Mexico GPI"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/mexicoForwardDatafeed.json": {
+            "get": {
+                "operationId": "mexicoForwardDatafeed.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "trade_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Trade Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Mexico GPI"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/mexicoForwardHistoricalData.json": {
+            "get": {
+                "operationId": "mexicoForwardHistoricalData.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "start_date",
+                        "schema": {
+                            "type": "string",
+                            "default": "Defaults to today’s date - 365 days"
+                        },
+                        "description": "Start Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "end_date",
+                        "schema": {
+                            "type": "string",
+                            "default": "Today"
+                        },
+                        "description": "End Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "location",
+                        "schema": {
+                            "type": "string",
+                            "default": "SLAHH"
+                        },
+                        "description": "Location (pointcode). Defaults to Henry Hub (SLAHH)",
+                        "examples": {
+                            "Accepted": {
+                                "value": "SLAHH"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "trade_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Trade Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "contract",
+                        "schema": {
+                            "type": "string",
+                            "default": "Defaults to current prompt month"
+                        },
+                        "description": "Contract (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Mexico GPI"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/mexicoForwardLocations": {
+            "get": {
+                "operationId": "mexicoForwardLocations_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "csv",
+                                "json",
+                                "txt"
+                            ]
+                        }
+                    }
+                ],
+                "tags": [
+                    "Mexico GPI"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/middayDatafeed.json": {
+            "get": {
+                "operationId": "middayDatafeed.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "trade_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Trade Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "MidDay Alert"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/middayDatafeed.txt": {
+            "get": {
+                "operationId": "middayDatafeed.txt_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "trade_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Trade Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "MidDay Alert"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/middayHistoricalData.json": {
+            "get": {
+                "operationId": "middayHistoricalData.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "start_date",
+                        "schema": {
+                            "type": "string",
+                            "default": "Defaults to today’s date - 365 days"
+                        },
+                        "description": "Start Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "end_date",
+                        "schema": {
+                            "type": "string",
+                            "default": "Today"
+                        },
+                        "description": "End Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "location",
+                        "schema": {
+                            "type": "string",
+                            "default": "SLAHH"
+                        },
+                        "description": "Location (pointcode). Defaults to Henry Hub (SLAHH)",
+                        "examples": {
+                            "Accepted": {
+                                "value": "SLAHH"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "MidDay Alert"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/middayLocations": {
+            "get": {
+                "operationId": "middayLocations_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "csv",
+                                "json",
+                                "txt"
+                            ]
+                        }
+                    }
+                ],
+                "tags": [
+                    "MidDay Alert"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/shaleDatafeed.json": {
+            "get": {
+                "operationId": "shaleDatafeed.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "trade_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Trade Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Shale Daily"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/shaleDatafeed.txt": {
+            "get": {
+                "operationId": "shaleDatafeed.txt_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "trade_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Trade Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Shale Daily"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/shaleHistoricalData.json": {
+            "get": {
+                "operationId": "shaleHistoricalData.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "start_date",
+                        "schema": {
+                            "type": "string",
+                            "default": "Defaults to today’s date - 365 days"
+                        },
+                        "description": "Start Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "end_date",
+                        "schema": {
+                            "type": "string",
+                            "default": "Today"
+                        },
+                        "description": "End Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "location",
+                        "schema": {
+                            "type": "string",
+                            "default": "SLAHH"
+                        },
+                        "description": "Location (pointcode). Defaults to Henry Hub (SLAHH)",
+                        "examples": {
+                            "Accepted": {
+                                "value": "SLAHH"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Shale Daily"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/shaleLocations": {
+            "get": {
+                "operationId": "shaleLocations_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "csv",
+                                "json",
+                                "txt"
+                            ]
+                        }
+                    }
+                ],
+                "tags": [
+                    "Shale Daily"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/weeklyDatafeed.json": {
+            "get": {
+                "operationId": "weeklyDatafeed.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Weekly GPI"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/weeklyDatafeed.txt": {
+            "get": {
+                "operationId": "weeklyDatafeed.txt_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "issue_date",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Issue Date (YYYY-MM-DD format). Issue date will always be a business day",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Weekly GPI"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/weeklyHistoricalData.json": {
+            "get": {
+                "operationId": "weeklyHistoricalData.json_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "start_date",
+                        "schema": {
+                            "type": "string",
+                            "default": "Defaults to today’s date - 365 days"
+                        },
+                        "description": "Start Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "end_date",
+                        "schema": {
+                            "type": "string",
+                            "default": "Today"
+                        },
+                        "description": "End Date (YYYY-MM-DD format).",
+                        "examples": {
+                            "Accepted": {
+                                "value": "2021-01-28"
+                            },
+                            "Invalid": {
+                                "value": "01-28-2021"
+                            }
+                        }
+                    },
+                    {
+                        "in": "query",
+                        "name": "location",
+                        "schema": {
+                            "type": "string",
+                            "default": "SLAHH"
+                        },
+                        "description": "Location (pointcode). Defaults to Henry Hub (SLAHH)",
+                        "examples": {
+                            "Accepted": {
+                                "value": "SLAHH"
+                            }
+                        }
+                    }
+                ],
+                "tags": [
+                    "Weekly GPI"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        },
+        "/weeklyLocations": {
+            "get": {
+                "operationId": "weeklyLocations_retrieve",
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "format",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "csv",
+                                "json",
+                                "txt"
+                            ]
+                        }
+                    }
+                ],
+                "tags": [
+                    "Weekly GPI"
+                ],
+                "security": [
+                    {
+                        "jwtAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "No response body"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "NGITokenObtainPair": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "writeOnly": true
+                    },
+                    "password": {
+                        "type": "string",
+                        "writeOnly": true
+                    }
+                },
+                "required": [
+                    "email",
+                    "password"
+                ]
+            },
+            "Token": {
+                "type": "object",
+                "properties": {
+                    "access_token": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "access_token"
+                ]
+            }
+        },
+        "securitySchemes": {
+            "jwtAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT"
+            }
+        }
+    }
+}

@@ -1,0 +1,50 @@
+body.daily-prices-pro-page {
+    background: #f8fafc;
+    color: #0f172a;
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+body.daily-prices-pro-page .main-content {
+    padding: 0;
+    max-width: 100%;
+}
+
+body.daily-prices-pro-page .footer {
+    display: none;
+}
+
+.daily-prices-pro-container .custom-scroll::-webkit-scrollbar,
+#logContent.custom-scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.daily-prices-pro-container .custom-scroll::-webkit-scrollbar-track,
+#logContent.custom-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.daily-prices-pro-container .custom-scroll::-webkit-scrollbar-thumb,
+#logContent.custom-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+.daily-prices-pro-container .custom-scroll::-webkit-scrollbar-thumb:hover,
+#logContent.custom-scroll::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+.daily-prices-pro-container table th,
+.daily-prices-pro-container table td {
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.daily-prices-log {
+    pointer-events: none;
+}
+
+.daily-prices-log button,
+.daily-prices-log #logDrawer {
+    pointer-events: auto;
+}

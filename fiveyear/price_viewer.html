@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}NGI Price Data - Basic Price Viewer{% endblock %}
+
+{% block content %}
+
+<!-- Database Status -->
+<div class="stats-row">
+    <span class="stats-item"><strong>Records:</strong> {{ "{:,}".format(stats.total_records) }}</span>
+    <span class="stats-item"><strong>Locations:</strong> {{ stats.unique_locations }}</span>
+    {% if stats.date_range.min_date and stats.date_range.max_date %}
+    <span class="stats-item"><strong>Data Period:</strong> {{ stats.date_range.min_date }} to {{ stats.date_range.max_date }}</span>
+    {% endif %}
+</div>
+
+<!-- Price Chart Section -->
+<div class="form-section">
+    <h3>Price Chart Query</h3>
+
+    <form id="chartForm">
+        <div class="form-row">
+            <span class="form-label">Region:</span>
+            <select id="regionSelect" class="form-input" onchange="updateLocations()">
+                <option value="">Select Region</option>
+                {% for region in locations_by_region.keys() %}
+                <option value="{{ region }}" {% if region == 'South Louisiana' %}selected{% endif %}>{{ region }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-row">
+            <span class="form-label">Location:</span>
+            <select id="locationSelect" class="form-input">
+                <option value="">Select Location</option>
+            </select>
+        </div>
+
+        <div class="form-row">
+            <span class="form-label">Start Date:</span>
+            <input type="date" id="startDate" class="form-input">
+            <span class="form-label" style="margin-left: 20px;">End Date:</span>
+            <input type="date" id="endDate" class="form-input">
+        </div>
+
+        <div class="form-row">
+            <input type="submit" value="Update Chart" class="btn btn-primary">
+            <input type="button" value="Last 30 Days" class="btn" onclick="setDateRange(30)">
+            <input type="button" value="Last 90 Days" class="btn" onclick="setDateRange(90)">
+            <input type="button" value="Last Year" class="btn" onclick="setDateRange(365)">
+            <input type="button" value="Copy Data" class="btn" onclick="copyChartDataToClipboard()" id="copyDataBtn" style="display: none;">
+        </div>
+    </form>
+</div>
+
+<!-- Chart Display -->
+<div class="chart-container">
+    <div id="priceChart" style="width: 100%; height: 450px;"></div>
+</div>
+
+<!-- Chart Information -->
+<div id="chartInfo" class="info-box" style="display: none;">
+    <strong>Location:</strong> <span id="chartLocationName">-</span> &nbsp;&nbsp;
+    <strong>Region:</strong> <span id="chartRegionName">-</span> &nbsp;&nbsp;
+    <strong>Records:</strong> <span id="chartRecordCount">-</span> &nbsp;&nbsp;
+    <strong>Period:</strong> <span id="chartDateRange">-</span>
+</div>
+
+<!-- Available Locations -->
+<div class="location-section">
+    <h3>Available Locations by Region</h3>
+    <div class="location-list">
+        {% for region, locations in locations_by_region.items() %}
+        <h4>{{ region }}</h4>
+        <ul>
+            {% for location in locations[:8] %}
+            <li>
+                <a href="{{ url_for('location_detail', location_code=location.point_code) }}">
+                    {{ location.location_name }} ({{ location.point_code }})
+                </a>
+            </li>
+            {% endfor %}
+            {% if locations|length > 8 %}
+            <li><em>... {{ locations|length - 8 }} additional locations</em></li>
+            {% endif %}
+        </ul>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+// Pass location data to JavaScript
+const locationsByRegion = {{ locations_by_region | tojson | safe }};
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

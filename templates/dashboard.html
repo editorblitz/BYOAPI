@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - NGI Chart Lab{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="dashboard-header">
+        <h1>Welcome to NGI Chart Lab</h1>
+        <p class="session-info">
+            Logged in as <strong>{{ session_info.email }}</strong> |
+            Session expires in {{ session_info.expires_in }}
+        </p>
+    </div>
+
+    <div class="tools-grid">
+        {% for tool in tools %}
+        <a href="{{ tool.url }}" class="tool-card">
+            <div class="tool-icon">
+                <i class="icon-{{ tool.icon }}"></i>
+            </div>
+            <h3>{{ tool.name }}</h3>
+            <p>{{ tool.description }}</p>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

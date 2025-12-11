@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - NGI Chart Lab</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body class="auth-page">
+    <div class="auth-container">
+        <div class="auth-box">
+            <h1>NGI Chart Lab</h1>
+            <p class="auth-subtitle">Sign in with your NGI API credentials</p>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash flash-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('auth.login') }}" autocomplete="on">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="form-group">
+                    <label for="email">NGI Email</label>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        autocomplete="email"
+                        placeholder="your.email@company.com"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="api_key">API Key</label>
+                    <input
+                        type="password"
+                        id="api_key"
+                        name="api_key"
+                        autocomplete="current-password"
+                        placeholder="Enter your NGI API key"
+                        required
+                    >
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="remember_me" name="remember_me">
+                    <label for="remember_me">Keep me logged in for 7 days</label>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">Login</button>
+
+                <div class="auth-info">
+                    <p><strong>Don't have an API key?</strong></p>
+                    <p>Contact <a href="mailto:ngidata@naturalgasintel.com">ngidata@naturalgasintel.com</a> to get started.</p>
+                    <hr>
+                    <p class="session-info">
+                        Without "Remember me": Session expires after 8 hours<br>
+                        With "Remember me": Session expires after 7 days
+                    </p>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,420 @@
+================================================================================
+PRICE DATABASE - COMPLETE REPOSITORY CONTENTS
+Generated: 2025-12-07
+================================================================================
+
+PROJECT OVERVIEW
+================================================================================
+This is a Flask-based natural gas price data visualization system that:
+- Downloads price data from NGI API
+- Stores data in SQLite database
+- Provides interactive charts using ECharts
+- Supports year-on-year comparisons and volume analysis
+
+KEY FILES AND STRUCTURE:
+.claude/settings.local.json
+.gitattributes
+.gitignore
+BULK_DISPLAY_NOTES.md
+README.md
+app.py
+data_loader.py
+database.py
+example.csv
+instructions.md
+price_chart_with_extra.html
+requirements.txt
+test_api.py
+static/css/style.css
+static/js/dashboard.js
+static/js/location_detail.js
+static/js/monthly_volumes.js
+static/js/year_on_year_viewer.js
+templates/admin.html
+templates/base.html
+templates/home.html
+templates/location_detail.html
+templates/monthly_volumes.html
+templates/price_viewer.html
+templates/year_on_year_viewer.html
+
+================================================================================
+PYTHON BACKEND FILES
+================================================================================
+
+FILE: app.py (Main Flask Application - 705 lines)
+- Flask web application for natural gas price data visualization
+- Routes: Home, price-viewer, year-on-year-viewer, monthly-volumes, admin
+- API endpoints for price data, year-on-year data, five-year ranges, monthly volumes
+- Data update endpoints for single/all locations
+- Conversion functions for flow dates to daily prices
+- Five-year range calculations
+
+FILE: database.py (Database Schema - 221 lines)
+- SQLite database management class (PriceDatabase)
+- Tables: locations, price_data
+- Methods: insert_location, insert_price_data, get_price_data
+- Query methods: get_available_locations, get_date_range, get_database_stats
+- Database initialization and indexing
+
+FILE: test_api.py (API Client - 147 lines)
+- NGIDataAPI class for API authentication and data retrieval
+- authenticate(): Gets access token from API
+- get_historical_data(): Fetches price data for location/date range
+- process_api_response(): Converts API object format to records
+- test_api_connection(): Test function for API connectivity
+
+FILE: data_loader.py (Data Loading Utility - 171 lines)
+- DataLoader class for downloading and storing price data
+- load_data_for_location(): Load data for specific location
+- test_load_small_dataset(): Load sample data for 3 test locations
+- load_location_data_2020_present(): Load full historical data
+- Command-line interface for data management
+
+FILE: requirements.txt (4 lines)
+- python-dotenv==1.0.0
+- requests==2.31.0
+- flask==3.0.0
+- pandas==2.1.4
+
+================================================================================
+FRONTEND JAVASCRIPT FILES
+================================================================================
+
+FILE: static/js/dashboard.js (251 lines)
+- Main price viewer dashboard
+- Functions: initializeDatePickers, initializeChart, updateLocations
+- setDateRange(): Quick date range selection (30/90/365 days)
+- loadChartData(): Fetch price data from API
+- updateChart(): Render ECharts price chart with high/low/average
+- copyChartDataToClipboard(): Export TSV format for Excel
+
+FILE: static/js/location_detail.js (225 lines)
+- Individual location detail page
+- Similar structure to dashboard.js
+- setAllDataRange(): View all available data for location
+- Displays: price history, recent data table, price change metrics
+- Copy functionality for chart data
+
+FILE: static/js/monthly_volumes.js (290 lines)
+- Monthly volume analysis chart
+- Dual-axis chart: total monthly volume (bars) + daily average (line)
+- updateVolumeTable(): Display monthly summary table
+- Localization formatting for large numbers
+- Data zoom and scroll functionality
+
+FILE: static/js/year_on_year_viewer.js (478 lines)
+- Year-on-year price comparison
+- Three comparison modes:
+  1. Full Year: Previous year (full) vs current year (Jan 1 - today)
+  2. YTD: Same period comparison (year-to-date)
+  3. Five-Year: Current year vs 5-year high/low/average range
+- updateChart(): Standard year-on-year comparison
+- updateFiveYearChart(): Five-year range band chart
+- Automatic mode description updates
+
+================================================================================
+STATIC CSS
+================================================================================
+
+FILE: static/css/style.css (256 lines)
+Traditional business web styling:
+- Header: Navy background (#003366)
+- Navigation links with hover effects
+- Data tables with alternating row colors
+- Form styling with input controls
+- Button styling (primary and secondary)
+- Chart containers and info boxes
+- Price change color coding (green up, red down)
+- Location section styling with collapsible lists
+
+================================================================================
+TEMPLATE FILES (Jinja2/Flask)
+================================================================================
+
+FILE: templates/base.html (36 lines)
+Base template structure:
+- Header with "Natural Gas Intelligence - Price Data System"
+- Navigation: Home, Price Viewer, Year on Year, Monthly Volumes, Database Status, Admin, Back
+- Main content block
+- ECharts library inclusion
+- Custom CSS stylesheet
+
+FILE: templates/home.html (87 lines)
+Analysis hub landing page:
+- System status and statistics
+- Data analysis tools table (7 tools listed)
+- Quick access links for Henry Hub, Waha, National Average
+- System information box
+
+FILE: templates/price_viewer.html (98 lines)
+Basic price viewer dashboard:
+- Region/Location selection dropdowns
+- Date range picker
+- Interactive ECharts price chart
+- Available locations by region (with quick links)
+- Chart info box (location, region, record count, date range)
+
+FILE: templates/location_detail.html (97 lines)
+Individual location detail view:
+- Breadcrumb navigation
+- Location information stats
+- Date range controls with presets (30/90/365 days, All Data)
+- Price chart display
+- Chart info with latest price and change metrics
+- Recent price data table (10 records)
+
+FILE: templates/monthly_volumes.html (109 lines)
+Monthly volume analysis:
+- Region/Location selectors
+- Monthly volume chart (dual axis)
+- Chart info display
+- Monthly volume summary table
+- Available locations by region
+- LocationsByRegion passed as JSON to JavaScript
+
+FILE: templates/year_on_year_viewer.html (101 lines)
+Year-on-year comparison:
+- Region/Location selectors
+- Comparison mode radio buttons (Full Year, YTD, Five-Year Range)
+- Dynamic comparison description
+- Interactive price chart
+- Chart info with record counts
+- Available locations by region
+
+FILE: templates/admin.html (217 lines)
+Admin dashboard:
+- Database statistics display
+- Update all locations button
+- Location status table with:
+  - Code, Name, Region, Earliest/Latest Date, Total Records
+  - Individual update buttons for each location
+- Update log display (scrollable text area)
+- JavaScript functions for updating single/all locations
+- Update status messages with timestamps
+
+================================================================================
+CONFIGURATION AND DOCUMENTATION FILES
+================================================================================
+
+FILE: .claude/settings.local.json (12 lines)
+Claude Code settings for this project:
+- Permissions for Bash python testing commands
+- Allow python3 and pip3 install commands
+
+FILE: .gitattributes (2 lines)
+- Auto-detect text files
+- LF normalization
+
+FILE: .gitignore (181 lines)
+Standard Python gitignore with:
+- __pycache__, *.pyc, *.egg-info
+- Virtual environments (venv/, .venv, env/)
+- Distribution files (build/, dist/)
+- IDE files (.venv, .idea)
+- Environment files (.env)
+- Cursor editor ignore files
+
+FILE: README.md (2 lines)
+Just contains: "# price-database"
+
+FILE: instructions.md (12 lines)
+Project description:
+- Flask tool for visualizing natural gas price data
+- Two-step project: API download + SQLite storage, then Flask visualization
+- Downloads from 2020 to present
+- Uses ECharts for visualization
+- Updates database incrementally
+- Handles weekday-only trading data
+
+FILE: BULK_DISPLAY_NOTES.md (223 lines)
+Strategy document for performance optimization:
+- Current limitations of real-time calculations
+- Proposed database schema for pre-computation:
+  - daily_prices table
+  - monthly_summaries table
+  - five_year_ranges table
+  - price_spreads table (future)
+  - moving_averages table (future)
+- Implementation strategy with batch processing
+- Migration plan in 4 phases
+- Performance and storage considerations
+
+FILE: price_chart_with_extra.html (685 lines)
+Standalone HTML file for direct API testing:
+- Embedded API credentials (chris.newman@naturalgasintel.com)
+- Full location list (100+ gas pricing points across North America)
+- Form for querying date ranges and locations
+- Client-side API calls with authentication
+- Table display of results
+- ECharts visualization
+- Copy-to-clipboard functions for data export
+- Regions: South Texas, East Texas, West Texas, Midwest, Midcontinent,
+  North Louisiana, South Louisiana, Southeast, Appalachia, Northeast,
+  Rockies, Arizona/Nevada, California, Canada
+
+FILE: example.csv (178 rows)
+Sample API response data:
+- Headers: Index, Point Code, Issue Date, Trade Date, Region Name, Location Name,
+  Low, High, Average, Volume, Deals, Flow Start Date, Flow End Date
+- Sample data: Henry Hub (SLAHH) prices from Jan-Sep 2025
+- Demonstrates flow date ranges spanning multiple days
+
+================================================================================
+DATABASE INFORMATION
+================================================================================
+
+Database File: price_data.db (3.1 MB - not included in git, binary file)
+
+Tables:
+1. locations
+   - location_code (PRIMARY KEY)
+   - location_name
+   - region_name
+   - created_at
+
+2. price_data
+   - id (PRIMARY KEY, autoincrement)
+   - point_code
+   - issue_date
+   - trade_date (indexed)
+   - region_name
+   - location_name
+   - low, high, average (REAL)
+   - volume, deals (INTEGER)
+   - flow_start_date, flow_end_date (indexed together)
+   - created_at
+   - UNIQUE constraint on (point_code, trade_date, flow_start_date, flow_end_date)
+
+Indexes:
+- idx_price_data_point_code
+- idx_price_data_trade_date
+- idx_price_data_flow_dates
+
+================================================================================
+API ENDPOINTS
+================================================================================
+
+GET /
+- Home page with system overview
+
+GET /price-viewer
+- Basic price viewer dashboard
+
+GET /year-on-year-viewer
+- Year-on-year comparison tool
+
+GET /monthly-volumes
+- Monthly volume analysis
+
+GET /admin
+- Admin dashboard for data management
+
+GET /api/price-data?location=CODE&start_date=YYYY-MM-DD&end_date=YYYY-MM-DD
+- Returns: location_name, region_name, trade_dates[], averages[], highs[], lows[],
+  volumes[], record_count, date_range
+
+GET /api/year-on-year-data?location=CODE&mode=full|ytd
+- Returns: location_name, region_name, dates[], current_year_prices[],
+  previous_year_prices[], comparison_mode
+
+GET /api/five-year-range-data?location=CODE
+- Returns: current_year_prices{}, five_year_high[], five_year_low[],
+  five_year_average[], dates[], years_included[]
+
+GET /api/monthly-volume-data?location=CODE
+- Returns: location_name, region_name, monthly_data[{month, total_volume,
+  daily_avg_volume, trading_days, total_deals}]
+
+GET /api/locations
+- Returns: array of available locations
+
+GET /api/stats
+- Returns: total_records, unique_locations, date_range
+
+GET /api/locations-status
+- Returns: locations array with earliest_date, latest_date, days_behind,
+  record_count
+
+POST /api/update-location-data
+- Updates single location from API
+- Body: {location_code: string}
+
+POST /api/update-all-locations
+- Bulk updates all locations from API
+
+GET /location/CODE
+- Detailed view for specific location with 10 recent records
+
+================================================================================
+SETUP AND RUNNING
+================================================================================
+
+1. Install dependencies:
+   pip install -r requirements.txt
+
+2. Create .env file with:
+   API_EMAIL=your_email@example.com
+   API_KEY=your_api_key
+   BASE_URL=https://api.ngidata.com/
+   FLASK_SECRET_KEY=your_secret_key
+   DATABASE_PATH=price_data.db
+
+3. Load initial data:
+   python data_loader.py test           (small test dataset)
+   python data_loader.py full SLAHH     (full historical for location)
+   python data_loader.py stats          (show database stats)
+
+4. Run Flask app:
+   python app.py
+
+   Access at: http://localhost:5000
+
+================================================================================
+KEY FEATURES
+================================================================================
+
+✓ Price Data Visualization
+  - Interactive ECharts with high/low/average prices
+  - Custom date range selection
+  - Quick preset buttons (30/90/365 days, All data)
+
+✓ Year-on-Year Analysis
+  - Compare current vs previous year
+  - Year-to-date (YTD) comparison mode
+  - Five-year range comparison with bands
+
+✓ Volume Analysis
+  - Monthly total and daily average volumes
+  - Dual-axis chart display
+  - 12-month rolling window
+
+✓ Data Management
+  - Admin dashboard for location status
+  - Single or bulk location updates from API
+  - Update logs with timestamps
+
+✓ Data Export
+  - Copy data to clipboard in TSV format (Excel-friendly)
+  - Flow date range expansion
+  - Trade date assignment
+
+✓ Regional Organization
+  - 15 regions with 100+ trading locations
+  - Region-based location filtering
+  - Quick access links
+
+================================================================================
+GIT HISTORY
+================================================================================
+
+Recent commits:
+51559a7 - added files
+81a36f0 - Initial commit
+
+Current branch: main
+Files modified: price_data.db, Pipfile (untracked)
+
+================================================================================
+END OF REPOSITORY CONTENTS
+================================================================================

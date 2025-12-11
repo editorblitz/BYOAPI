@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NGI Strip Price Calculator - Standalone</title>
+
+    <!-- SheetJS library for Excel export -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+    <!-- ECharts library for charts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            max-width: 1400px;
+        }
+        h1 {
+            color: #333;
+        }
+        .form-container {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+        }
+        .form-row {
+            margin-bottom: 15px;
+        }
+        label {
+            display: inline-block;
+            width: 150px;
+            font-weight: bold;
+        }
+        select, input[type="date"] {
+            padding: 5px;
+            width: 250px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007cba;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #005a87;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+        .error {
+            color: red;
+            padding: 10px;
+            background-color: #fee;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            color: green;
+            padding: 10px;
+            background-color: #efe;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .results-container {
+            margin-top: 20px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #007cba;
+            color: white;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+        }
+        td {
+            background-color: white;
+        }
+        tr:hover td {
+            background-color: #f5f5f5;
+        }
+        .table-wrapper {
+            border: 1px solid #ddd;
+        }
+        .copy-btn {
+            background-color: #28a745;
+            margin-top: 10px;
+        }
+        .copy-btn:hover {
+            background-color: #1e7e34;
+        }
+        .info {
+            color: #666;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        .progress-log {
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .progress-log div {
+            padding: 2px 0;
+        }
+        #chartContainer {
+            width: 100%;
+            height: 500px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>NGI Strip Price Calculator</h1>
+
+    <div class="form-container">
+        <form id="stripForm">
+            <div class="form-row">
+                <label for="region">Region:</label>
+                <select id="region" name="region" onchange="updateLocations()" required>
+                    <option value="Favorites">Favorites</option>
+                    <option value="South Texas">South Texas</option>
+                    <option value="East Texas">East Texas</option>
+                    <option value="West Texas/SE New Mexico">West Texas/SE New Mexico</option>
+                    <option value="Midwest">Midwest</option>
+                    <option value="Midcontinent">Midcontinent</option>
+                    <option value="North Louisiana/Arkansas">North Louisiana/Arkansas</option>
+                    <option value="South Louisiana">South Louisiana</option>
+                    <option value="Southeast">Southeast</option>
+                    <option value="Appalachia">Appalachia</option>
+                    <option value="Northeast">Northeast</option>
+                    <option value="Rocky Mountains">Rocky Mountains</option>
+                    <option value="Arizona/Nevada">Arizona/Nevada</option>
+                    <option value="California">California</option>
+                    <option value="Canada">Canada</option>
+                </select>
+            </div>
+
+            <div class="form-row">
+                <label for="location">Location:</label>
+                <select id="location" name="location" required>
+                    <!-- Will be populated by JavaScript -->
+                </select>
+            </div>
+
+            <div class="form-row">
+                <label for="start_date">Start Trade Date:</label>
+                <input type="date" id="start_date" name="start_date" required>
+            </div>
+
+            <div class="form-row">
+                <label for="end_date">End Trade Date:</label>
+                <input type="date" id="end_date" name="end_date" required>
+            </div>
+
+            <div class="form-row">
+                <label>Price Type:</label>
+                <label style="width: auto; font-weight: normal;">
+                    <input type="radio" name="price_type" value="basis" checked> Basis Prices
+                </label>
+                <label style="width: auto; font-weight: normal; margin-left: 20px;">
+                    <input type="radio" name="price_type" value="fixed"> Fixed Prices
+                </label>
+            </div>
+
+            <div class="form-row">
+                <label for="num_strips">Number of Strips:</label>
+                <select id="num_strips" name="num_strips">
+                    <option value="5" selected>5 (current + 4 forward)</option>
+                    <option value="7">7 (current + 6 forward)</option>
+                    <option value="9">9 (current + 8 forward)</option>
+                    <option value="11">11 (current + 10 forward)</option>
+                    <option value="13">13 (current + 12 forward)</option>
+                    <option value="15">15 (current + 14 forward)</option>
+                </select>
+            </div>
+
+            <div class="form-row">
+                <button type="submit" id="submitBtn">Calculate Strips</button>
+            </div>
+
+        </form>
+    </div>
+
+    <div id="status"></div>
+
+    <div id="progressLog" class="progress-log" style="display: none;"></div>
+
+    <div class="results-container" id="resultsContainer" style="display: none;">
+        <h2>Strip Prices</h2>
+        <div id="resultsMeta"></div>
+        <button class="copy-btn" onclick="copyToClipboard()">Copy to Clipboard</button>
+        <button class="copy-btn" onclick="downloadDetailedBreakdown()" style="margin-left: 10px;">Download Detailed Breakdown (Excel)</button>
+        <div id="chartContainer"></div>
+        <div class="table-wrapper">
+            <table id="resultsTable">
+                <thead id="tableHead"></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // =====================================================================
+        // CONFIGURATION - Update with your proxy URL
+        // =====================================================================
+        const PROXY_URL = 'https://ngi-proxy.onrender.com/proxy';
+
+        // =====================================================================
+        // LOCATION DATA
+        // =====================================================================
+        const LOCATIONS = {
+            'Favorites': [
+                { name: 'Henry Hub', value: 'SLAHH' },
+                { name: 'Waha', value: 'WTXWAHA' },
+                { name: 'Chicago Citygate', value: 'MCWCCITY' },
+                { name: 'Algonquin Citygate', value: 'NEAALGCG' },
+                { name: 'Houston Ship Channel', value: 'ETXHSHIP' },
+                { name: 'Transco Zone 5', value: 'NEATRANZ5' },
+                { name: 'Texas Eastern M-2, 30 Receipt', value: 'NEATETM2REC' },
+                
+                { name: 'NOVA/AECO C', value: 'CDNNOVA' },
+                { name: 'PG&E Citygate', value: 'CALPGCG' },
+                { name: 'SoCal Citygate', value: 'CALSCG' }
+            ],
+            'South Texas': [
+                { name: 'Agua Dulce', value: 'STXAGUAD' },
+                { name: 'Florida Gas Zone 1', value: 'STXFGTZ1' },
+                { name: 'NGPL S. TX', value: 'STXNGPL' },
+                { name: 'Tennessee Zone 0 South', value: 'STXTENN' },
+                { name: 'Texas Eastern S. TX', value: 'STXTETCO' },
+                { name: 'Transco Zone 1', value: 'STXST30' },
+                { name: 'Tres Palacios', value: 'STX3PAL' },
+                { name: 'Tres Palacios - Injection', value: 'STX3PALINJ' },
+                { name: 'Tres Palacios - Withdrawal', value: 'STX3PALWD' }
+            ],
+            'East Texas': [
+                { name: 'Atmos Zone 3', value: 'ETXATMOSZ3' },
+                { name: 'Carthage', value: 'ETXCARTH' },
+                { name: 'Golden Triangle Storage', value: 'ETXGLDTRI' },
+                { name: 'Gulf South Pool 16', value: 'ETXGS16P' },
+                { name: 'Houston Ship Channel', value: 'ETXHSHIP' },
+                { name: 'Katy', value: 'ETXKATY' },
+                { name: 'Moss Bluff', value: 'ETXMBSF' },
+                { name: 'NGPL TexOk', value: 'ETXNGPL' },
+                { name: 'Tennessee Zone 0 North', value: 'ETXTENN' },
+                { name: 'Texas Eastern E. TX', value: 'ETXTETCO' },
+                { name: 'Tolar Hub', value: 'OTHTOLAR' },
+                { name: 'Transco Zone 2', value: 'ETXST45' },
+                { name: 'Transco Zone 2 non-St. 45', value: 'ETXNONST45' },
+                { name: 'Transco Zone 2 St. 45', value: 'ETXST45ONLY' }
+            ],
+            'West Texas/SE New Mexico': [
+                { name: 'El Paso - Keystone & Waha Pools', value: 'WTXEPKPWP' },
+                { name: 'El Paso Permian', value: 'WTXEPP' },
+                { name: 'El Paso - Keystone Pool', value: 'WTXEPKEY' },
+                { name: 'El Paso - Plains Pool', value: 'WTXEPPL' },
+                { name: 'El Paso - Waha Pool', value: 'WTXEPWAHA' },
+                { name: 'Oneok WesTex', value: 'WTXONEOK' },
+                { name: 'Transwestern', value: 'WTXTW' },
+                { name: 'Transwestern - Central', value: 'WTXTWCENT' },
+                { name: 'Transwestern - W. TX', value: 'WTXTWOTH' },
+                { name: 'Waha', value: 'WTXWAHA' }
+            ],
+            'Midwest': [
+                { name: 'Alliance', value: 'MCWALL' },
+                { name: 'ANR ML7', value: 'MCWML7' },
+                { name: 'Chicago Citygate', value: 'MCWCCITY' },
+                { name: 'Chicago - Nicor Gas', value: 'MCWCCNICOR' },
+                { name: 'Chicago - NIPSCO', value: 'MCWCCNIPS' },
+                { name: 'Chicago - North Shore', value: 'MCWCCNSHOR' },
+                { name: 'Chicago - Peoples', value: 'MCWCCPEOP' },
+                { name: 'Consumers Energy', value: 'MCWCONS' },
+                { name: 'Dawn', value: 'MCWDAWN' },
+                { name: 'Defiance', value: 'MCWDEFIANCE' },
+                { name: 'Rover-ANR', value: 'MCWROVANR' },
+                { name: 'Rover-Panhandle', value: 'MCWROVPEPL' },
+                { name: 'Emerson', value: 'MCWEMER' },
+                { name: 'Joliet', value: 'MCWJOL' },
+                { name: 'Lebanon', value: 'NEALEB' },
+                { name: 'Michigan Consolidated', value: 'MCWMCON' },
+                { name: 'NGPL Amarillo Mainline', value: 'MCWNGPLAM' },
+                { name: 'NGPL Iowa-Illinois', value: 'MCWNGPLIOI' },
+                { name: 'NGPL MidAmerican', value: 'MCWNGPLMIDAM' },
+                { name: 'Parkway/Union', value: 'MCWPARKWAY' },
+                { name: 'REX Zone 3 Delivered', value: 'OTHREXZN3DEL' },
+                { name: 'REX into ANR - Shelby', value: 'MCWREXANR' },
+                { name: 'REX into MGT - Edgar', value: 'MCWREXMGT' },
+                { name: 'REX into NGPL - Moultrie', value: 'MCWREXNGPL' }
+            ],
+            'Midcontinent': [
+                { name: 'ANR SW', value: 'MCWANR' },
+                { name: 'El Paso Anadarko', value: 'MCWEPANDKO' },
+                { name: 'Enable East', value: 'MCWNORE' },
+                { name: 'NGPL Midcontinent', value: 'MCWNGPL' },
+                { name: 'Northern Natural Demarc', value: 'MCWDMARK' },
+                { name: 'OGT', value: 'MCWONG' },
+                { name: 'Panhandle Eastern', value: 'MCWPEPL' },
+                { name: 'Southern Star', value: 'MCWWILL' },
+                { name: 'Ventura', value: 'OTHVENTURA' },
+                { name: 'Northern Border Ventura', value: 'MCWNBVENT' },
+                { name: 'Northern Natural Ventura', value: 'MCWVENT' }
+            ],
+            'North Louisiana/Arkansas': [
+                { name: 'Enable South', value: 'NLACPTS' },
+                { name: 'Perryville', value: 'NLAPERRY' },
+                { name: 'Texas Eastern, M1, 24', value: 'ALATETM124' },
+                { name: 'Texas Gas Zone 1', value: 'ETXTGT' },
+                { name: 'Trunkline Zone 1A', value: 'OTHTRNK1A' }
+            ],
+            'South Louisiana': [
+                { name: 'ANR SE', value: 'SLAANRSE' },
+                { name: 'Bobcat Storage', value: 'STGBOBCAT' },
+                { name: 'Columbia Gulf Mainline', value: 'SLACGMAIN' },
+                { name: 'Columbia Gulf onshore', value: 'SLACGO' },
+                { name: 'Egan Hub', value: 'STGEGAN' },
+                { name: 'Florida Gas Zone 2', value: 'SLAFGTZ2' },
+                { name: 'Henry Hub', value: 'SLAHH' },
+                { name: 'Pine Prairie', value: 'SLAPPSF' },
+                { name: 'Southern Natural', value: 'SLASONAT' },
+                { name: 'Tennessee Line 500', value: 'SLAT500' },
+                { name: 'Tennessee Line 800', value: 'SLAT800' },
+                { name: 'Texas Eastern E. LA', value: 'SLATETCOE' },
+                { name: 'Texas Eastern W. LA', value: 'SLATETCOW' },
+                { name: 'Transco Zone 3', value: 'SLATRANZ3' },
+                { name: 'Transco Zone 3 non-St. 65', value: 'SLANONST65' },
+                { name: 'Transco Zone 3 St. 65', value: 'SLAST65' },
+                { name: 'Trunkline E. LA', value: 'SLATRNKE' },
+                { name: 'Trunkline W. LA', value: 'SLATRNKW' }
+            ],
+            'Southeast': [
+                { name: 'Cove Point', value: 'NEACOVE' },
+                { name: 'FGT Citygate', value: 'FLAFGT' },
+                { name: 'Florida Gas Zone 3', value: 'SLAFGTZ3' },
+                { name: 'Southern Pines', value: 'ALASPSF' },
+                { name: 'Tenn Zone 1 100L', value: 'ALATENN1L100' },
+                { name: 'Tenn Zone 1 non-St. 87', value: 'SETENN1OTH' },
+                { name: 'Tenn Zone 1 St. 87', value: 'SETENN1ST87' },
+                { name: 'Texas Eastern M-1, 30', value: 'ALATETM1' },
+                { name: 'Transco Zone 4', value: 'ALAST85' },
+                { name: 'Transco Zone 5', value: 'NEATRANZ5' },
+                { name: 'Transco Zone 5 North', value: 'NEATZ5WGL' },
+                { name: 'Transco Zone 5 South', value: 'NEATZ5NWGL' },
+                { name: 'Transco Zone 5 St. 165', value: 'SEST165' }
+            ],
+            'Appalachia': [
+                { name: 'Columbia Gas', value: 'NEATCO' },
+                { name: 'Eastern Gas North', value: 'NEACNGNP' },
+                { name: 'Eastern Gas South', value: 'NEACNG' },
+                { name: 'Millennium East Pool', value: 'NEAMILL' },
+                { name: 'Tenn Zone 4 200L', value: 'NEATENN4L200' },
+                { name: 'Tennessee Zn 4 313 Pool', value: 'NEATENN4313P' },
+                { name: 'Tennessee Zn 4 Marcellus', value: 'NEATENN4MAR' },
+                { name: 'Texas Eastern M-2, 30 Receipt', value: 'NEATETM2REC' },
+                { name: 'Texas Eastern M-3, Delivery', value: 'NEATETM3DEL' },
+                { name: 'Transco-Leidy Line', value: 'NEALEIDYT' }
+            ],
+            'Northeast': [
+                { name: 'Algonquin Citygate', value: 'NEAALGCG' },
+                { name: 'Algonquin Citygate (non-G)', value: 'NEALGNG' },
+                { name: 'Algonquin Receipts', value: 'NEAALGIN' },
+                { name: 'Dracut', value: 'NEADRACUT' },
+                { name: 'Iroquois Zone 1', value: 'NEAIROZ1' },
+                { name: 'Iroquois Zone 2', value: 'NEAIRO' },
+                { name: 'Iroquois, Waddington', value: 'NEAIROWAD' },
+                { name: 'Maritimes & Northeast', value: 'NEAMNP' },
+                { name: 'Niagara', value: 'MCWNIAGR' },
+                { name: 'PNGTS', value: 'NEAPNGTS' },
+                { name: 'E Hereford/Pittsburg', value: 'NEAEHPITT' },
+                { name: 'PNGTS Non-Border', value: 'NEAPNGTSNBDR' },
+                { name: 'Tenn Zone 5 200L', value: 'NEATENN5L200' },
+                { name: 'Tenn Zone 5 200L East', value: 'NEATENNZ5E' },
+                { name: 'Tenn Zone 5 200L West', value: 'NEATENNZ5W' },
+                { name: 'Tenn Zone 6 200L', value: 'NEATENN6L200' },
+                { name: 'Tenn Zone 6 200L North', value: 'NEATENNZ6N' },
+                { name: 'Tenn Zone 6 200L South', value: 'NEATENNZ6S' },
+                { name: 'Transco Zone 6 non-NY', value: 'NEATZ6NNY' },
+                { name: 'Transco Zone 6 NY', value: 'NEATZ6NY' }
+            ],
+            'Rocky Mountains': [
+                { name: 'Cheyenne Hub', value: 'RMTCHEY' },
+                { name: 'Cheyenne Hub - Other', value: 'RMTCHEYOTH' },
+                { name: 'REX Cheyenne Compression Pool', value: 'RMTREXPL' },
+                { name: 'CIG', value: 'RMTCIG' },
+                { name: 'CIG DJ Basin', value: 'RMTCIGDJ' },
+                { name: 'El Paso Bondad', value: 'RMTEPBON' },
+                { name: 'El Paso San Juan', value: 'RMTEPSJ' },
+                { name: 'Kingsgate', value: 'RMTKING' },
+                { name: 'KRGT Rec Pool', value: 'RMTKR' },
+                { name: 'MountainWest', value: 'RMTQUEST' },
+                { name: 'Northwest S. of Green River', value: 'RMTNWSGR' },
+                { name: 'Northwest Sumas', value: 'RMTSUMAS' },
+                { name: 'Northwest Wyoming Pool', value: 'RMTNWW' },
+                { name: 'Opal', value: 'RMTOPAL' },
+                { name: 'Ruby - Receipts', value: 'RMTRUBYR' },
+                { name: 'Stanfield', value: 'RMTSTAN' },
+                { name: 'Transwestern San Juan', value: 'RMTTWSJ' },
+                { name: 'White River Hub', value: 'RMTWHITERVR' }
+            ],
+            'Arizona/Nevada': [
+                { name: 'El Paso S. Mainline/N. Baja', value: 'ARNBAJAN' },
+                { name: 'KRGT Del Pool', value: 'ARNKERNDEL' }
+            ],
+            'California': [
+                { name: 'Malin', value: 'CALM400' },
+                { name: 'PG&E Citygate', value: 'CALPGCG' },
+                { name: 'SoCal Citygate', value: 'CALSCG' },
+                { name: 'Southern Border, PG&E', value: 'CALSPGE' },
+                { name: 'SoCal Border Avg.', value: 'CALSAVG' },
+                { name: 'SoCal Border - Blythe', value: 'CALSAVGBLY' },
+                { name: 'SoCal Border - Ehrenberg', value: 'CALSAVGEH' },
+                { name: 'SoCal Border - Kern River Station', value: 'CALSAVGKRS' },
+                { name: 'SoCal Border - Kramer', value: 'CALSAVGKR' },
+                { name: 'SoCal Border - Needles', value: 'CALSAVGNE' },
+                { name: 'SoCal Border - Topock', value: 'CALSAVGTPK' },
+                { name: 'SoCal Border - Wheeler Ridge', value: 'CALSAVGWR' },
+            ],
+            'Canada': [
+                { name: 'Alliance (APC) - ATP', value: 'CDNCREC' },
+                { name: 'Empress', value: 'CDNEMP' },
+                { name: 'NOVA/AECO C', value: 'CDNNOVA' },
+                { name: 'Westcoast Station 2', value: 'CDNWST2' }
+            ]
+        };
+
+        // =====================================================================
+        // STRIP DEFINITIONS
+        // =====================================================================
+        const STRIP_DEFINITIONS = {
+            winter: ['11', '12', '01', '02', '03'],  // Nov-Mar (5 months)
+            summer: ['04', '05', '06', '07', '08', '09', '10']  // Apr-Oct (7 months)
+        };
+
+        // Global variable to store last calculation for Excel export
+        let lastCalculation = null;
+
+        // =====================================================================
+        // INITIALIZATION
+        // =====================================================================
+        window.addEventListener('DOMContentLoaded', function() {
+            updateLocations();
+
+            // Set default dates (last 30 days of trade dates)
+            // Trade date is typically 1 day behind current date since
+            // forward prices are issued the day after trade date
+            // (e.g., if today is Oct 29, latest available trade date is Oct 28,
+            //  because its issue date Oct 29 is published today)
+            // However, late in the day the current date's data may be available,
+            // so we don't block future date selection - just default to yesterday
+            const today = new Date();
+            const yesterday = new Date();
+            yesterday.setDate(today.getDate() - 1);
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(yesterday.getDate() - 30);
+
+            document.getElementById('end_date').valueAsDate = yesterday;
+            document.getElementById('start_date').valueAsDate = thirtyDaysAgo;
+        });
+
+        function updateLocations() {
+            const region = document.getElementById('region').value;
+            const locationSelect = document.getElementById('location');
+            locationSelect.innerHTML = '';
+
+            LOCATIONS[region].forEach(function(location) {
+                const option = document.createElement('option');
+                option.value = location.value;
+                option.textContent = location.name;
+                option.dataset.name = location.name;
+                locationSelect.appendChild(option);
+            });
+        }
+
+        // =====================================================================
+        // DATE UTILITIES
+        // =====================================================================
+        function generateBusinessDates(startDate, endDate) {
+            const dates = [];
+            const start = parseDate(startDate);
+            const end = parseDate(endDate);
+            let current = new Date(start);
+
+            while (current <= end) {
+                // Monday to Friday (0 = Sunday, 6 = Saturday)
+                if (current.getDay() !== 0 && current.getDay() !== 6) {
+                    dates.push(formatDate(current));
+                }
+                current.setDate(current.getDate() + 1);
+            }
+
+            return dates;
+        }
+
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function parseDate(dateStr) {
+            return new Date(dateStr + 'T00:00:00');
+        }
+
+        function addBusinessDays(dateStr, days) {
+            const date = parseDate(dateStr);
+            let daysToAdd = days;
+
+            while (daysToAdd !== 0) {
+                date.setDate(date.getDate() + (daysToAdd > 0 ? 1 : -1));
+                // Skip weekends
+                if (date.getDay() !== 0 && date.getDay() !== 6) {
+                    daysToAdd += (daysToAdd > 0 ? -1 : 1);
+                }
+            }
+
+            return formatDate(date);
+        }
+
+        function subtractBusinessDays(dateStr, days) {
+            return addBusinessDays(dateStr, -days);
+        }
+
+        // =====================================================================
+        // STRIP CALCULATION LOGIC
+        // =====================================================================
+        function getSeasonForDate(tradeDate) {
+            const date = parseDate(tradeDate);
+            const month = date.getMonth() + 1; // 1-12
+            const year = date.getFullYear();
+
+            if (month >= 11) {  // Nov, Dec
+                return { season: 'winter', year: year };
+            } else if (month <= 3) {  // Jan, Feb, Mar
+                return { season: 'winter', year: year - 1 };
+            } else {  // Apr - Oct
+                return { season: 'summer', year: year };
+            }
+        }
+
+        function getActiveStrips(tradeDate, numStrips = 5) {
+            const { season, year } = getSeasonForDate(tradeDate);
+            const strips = [];
+
+            if (season === 'winter') {
+                // Current winter
+                strips.push({
+                    name: `Winter ${year}/${year + 1}`,
+                    type: 'winter',
+                    year: year,
+                    balance_of: true
+                });
+
+                // Generate future strips
+                for (let i = 0; i < Math.ceil(numStrips / 2); i++) {
+                    // Next summer
+                    strips.push({
+                        name: `Summer ${year + 1 + i}`,
+                        type: 'summer',
+                        year: year + 1 + i,
+                        balance_of: false
+                    });
+                    // Next winter
+                    strips.push({
+                        name: `Winter ${year + 1 + i}/${year + 2 + i}`,
+                        type: 'winter',
+                        year: year + 1 + i,
+                        balance_of: false
+                    });
+                }
+            } else {  // summer
+                // Current summer
+                strips.push({
+                    name: `Summer ${year}`,
+                    type: 'summer',
+                    year: year,
+                    balance_of: true
+                });
+
+                // Generate future strips
+                for (let i = 0; i < Math.ceil(numStrips / 2); i++) {
+                    // Next winter
+                    strips.push({
+                        name: `Winter ${year + i}/${year + 1 + i}`,
+                        type: 'winter',
+                        year: year + i,
+                        balance_of: false
+                    });
+                    // Next summer
+                    strips.push({
+                        name: `Summer ${year + 1 + i}`,
+                        type: 'summer',
+                        year: year + 1 + i,
+                        balance_of: false
+                    });
+                }
+            }
+
+            return strips.slice(0, numStrips);
+        }
+
+        function getPromptContract(contracts, prices, tradeDate) {
+            const tradeDateObj = parseDate(tradeDate);
+            const forwardContracts = [];
+
+            for (let i = 0; i < contracts.length; i++) {
+                const contract = contracts[i];
+                try {
+                    const parts = contract.split('-');
+                    let contractYear, contractMonth;
+
+                    if (parts.length === 3) {
+                        contractYear = parseInt(parts[0]);
+                        contractMonth = parseInt(parts[1]);
+                    } else if (parts.length === 2) {
+                        contractYear = parseInt(parts[0]);
+                        contractMonth = parseInt(parts[1]);
+                    } else {
+                        continue;
+                    }
+
+                    const contractDate = new Date(contractYear, contractMonth - 1, 1);
+
+                    // Only include forward contracts
+                    if (contractDate > tradeDateObj) {
+                        forwardContracts.push({
+                            date: contractDate,
+                            name: contract,
+                            price: prices[i]
+                        });
+                    }
+                } catch (e) {
+                    continue;
+                }
+            }
+
+            if (forwardContracts.length === 0) {
+                return { contract: null, price: null };
+            }
+
+            // Sort by date and return the nearest one
+            forwardContracts.sort((a, b) => a.date - b.date);
+            return {
+                contract: forwardContracts[0].name,
+                price: forwardContracts[0].price
+            };
+        }
+
+        function calculateStripPrice(contracts, prices, stripDef, tradeDate) {
+            const stripType = stripDef.type;
+            const stripYear = stripDef.year;
+            const stripMonths = STRIP_DEFINITIONS[stripType];
+            const tradeDateObj = parseDate(tradeDate);
+
+            const relevantPrices = [];
+
+            for (let i = 0; i < contracts.length; i++) {
+                const contract = contracts[i];
+                try {
+                    const parts = contract.split('-');
+                    let contractYear, contractMonth;
+
+                    if (parts.length === 3) {
+                        contractYear = parseInt(parts[0]);
+                        contractMonth = String(parseInt(parts[1])).padStart(2, '0');
+                    } else if (parts.length === 2) {
+                        contractYear = parseInt(parts[0]);
+                        contractMonth = String(parseInt(parts[1])).padStart(2, '0');
+                    } else {
+                        continue;
+                    }
+
+                    const contractDate = new Date(contractYear, parseInt(contractMonth) - 1, 1);
+
+                    // Check if contract is still forward (hasn't expired)
+                    if (contractDate <= tradeDateObj) {
+                        continue;
+                    }
+
+                    // Check if contract month is in this strip's month list
+                    if (!stripMonths.includes(contractMonth)) {
+                        continue;
+                    }
+
+                    // Determine which year this contract belongs to for strip purposes
+                    let contractStripYear;
+                    if (stripType === 'winter') {
+                        // Nov-Dec belong to the start year, Jan-Mar belong to end year
+                        if (contractMonth === '11' || contractMonth === '12') {
+                            contractStripYear = contractYear;
+                        } else {  // Jan-Mar
+                            contractStripYear = contractYear - 1;
+                        }
+                    } else {  // summer
+                        contractStripYear = contractYear;
+                    }
+
+                    // Check if this contract belongs to our target strip year
+                    if (contractStripYear !== stripYear) {
+                        continue;
+                    }
+
+                    relevantPrices.push(prices[i]);
+                } catch (e) {
+                    continue;
+                }
+            }
+
+            if (relevantPrices.length === 0) {
+                return null;
+            }
+
+            // Calculate average
+            const sum = relevantPrices.reduce((a, b) => a + b, 0);
+            return sum / relevantPrices.length;
+        }
+
+        function getStripDetails(contracts, prices, stripDef, tradeDate) {
+            const stripType = stripDef.type;
+            const stripYear = stripDef.year;
+            const stripMonths = STRIP_DEFINITIONS[stripType];
+            const tradeDateObj = parseDate(tradeDate);
+
+            const details = [];
+
+            for (let i = 0; i < contracts.length; i++) {
+                const contract = contracts[i];
+                try {
+                    const parts = contract.split('-');
+                    let contractYear, contractMonth;
+
+                    if (parts.length === 3) {
+                        contractYear = parseInt(parts[0]);
+                        contractMonth = String(parseInt(parts[1])).padStart(2, '0');
+                    } else if (parts.length === 2) {
+                        contractYear = parseInt(parts[0]);
+                        contractMonth = String(parseInt(parts[1])).padStart(2, '0');
+                    } else {
+                        continue;
+                    }
+
+                    const contractDate = new Date(contractYear, parseInt(contractMonth) - 1, 1);
+
+                    // Check if contract is still forward
+                    if (contractDate <= tradeDateObj) {
+                        continue;
+                    }
+
+                    // Check if contract month is in this strip's month list
+                    if (!stripMonths.includes(contractMonth)) {
+                        continue;
+                    }
+
+                    // Determine which year this contract belongs to for strip purposes
+                    let contractStripYear;
+                    if (stripType === 'winter') {
+                        if (contractMonth === '11' || contractMonth === '12') {
+                            contractStripYear = contractYear;
+                        } else {
+                            contractStripYear = contractYear - 1;
+                        }
+                    } else {
+                        contractStripYear = contractYear;
+                    }
+
+                    // Check if this contract belongs to our target strip year
+                    if (contractStripYear !== stripYear) {
+                        continue;
+                    }
+
+                    details.push({
+                        contract: contract,
+                        price: prices[i]
+                    });
+                } catch (e) {
+                    continue;
+                }
+            }
+
+            return details;
+        }
+
+        // =====================================================================
+        // API CALLS
+        // =====================================================================
+        async function fetchForwardDataByDate(issueDate) {
+            const apiUrl = `https://api.ngidata.com/forwardDatafeed.json?issue_date=${issueDate}`;
+            const proxyUrl = `${PROXY_URL}?url=${encodeURIComponent(apiUrl)}`;
+
+            const response = await fetch(proxyUrl);
+            if (!response.ok) {
+                throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+            }
+
+            return await response.json();
+        }
+
+        // =====================================================================
+        // FORM SUBMISSION AND CALCULATION
+        // =====================================================================
+        document.getElementById('stripForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const submitBtn = document.getElementById('submitBtn');
+            const statusDiv = document.getElementById('status');
+            const progressLog = document.getElementById('progressLog');
+            const resultsContainer = document.getElementById('resultsContainer');
+
+            // Get form data
+            const locationSelect = document.getElementById('location');
+            const selectedOption = locationSelect.options[locationSelect.selectedIndex];
+            const locationName = selectedOption.dataset.name;
+            const startDate = document.getElementById('start_date').value;
+            const endDate = document.getElementById('end_date').value;
+            const priceType = document.querySelector('input[name="price_type"]:checked').value;
+            const numStrips = parseInt(document.getElementById('num_strips').value);
+
+            // Disable button and show loading
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Calculating...';
+            statusDiv.innerHTML = '<div class="loading">Starting calculation...</div>';
+            progressLog.innerHTML = '';
+            progressLog.style.display = 'block';
+            resultsContainer.style.display = 'none';
+
+            try {
+                // Notify user about potential proxy server wake-up delay
+                addProgressLog(progressLog, 'Connecting to proxy server (may take a moment if server is waking up)...');
+
+                // Convert trade date range to issue date range
+                // Issue date = trade date + 1 business day
+                addProgressLog(progressLog, 'Converting trade dates to issue dates...');
+                const issueStartDate = addBusinessDays(startDate, 1);
+                const issueEndDate = addBusinessDays(endDate, 1);
+                addProgressLog(progressLog, `Trade dates: ${startDate} to ${endDate}`);
+                addProgressLog(progressLog, `Issue dates: ${issueStartDate} to ${issueEndDate}`);
+
+                // Generate issue dates for API calls
+                addProgressLog(progressLog, 'Generating issue dates...');
+                const issueDates = generateBusinessDates(issueStartDate, issueEndDate);
+                addProgressLog(progressLog, `Found ${issueDates.length} issue dates to process`);
+
+                const results = [];
+                const detailedData = [];
+                let skipped = 0;
+
+                // Process each issue date
+                for (let i = 0; i < issueDates.length; i++) {
+                    const issueDate = issueDates[i];
+                    const tradeDate = subtractBusinessDays(issueDate, 1);
+
+                    try {
+                        addProgressLog(progressLog, `[${i + 1}/${issueDates.length}] Processing issue date ${issueDate} (trade date ${tradeDate})...`);
+
+                        // Fetch data using issue date
+                        const apiData = await fetchForwardDataByDate(issueDate);
+
+                        // Find location
+                        let locationData = null;
+                        for (const [key, locData] of Object.entries(apiData.data || {})) {
+                            if (locData.Location === locationName) {
+                                locationData = locData;
+                                break;
+                            }
+                        }
+
+                        if (!locationData) {
+                            skipped++;
+                            addProgressLog(progressLog, `[${i + 1}/${issueDates.length}] Issue ${issueDate} / Trade ${tradeDate} - Location not found, skipping`);
+                            continue;
+                        }
+
+                        // Get contracts and prices
+                        const contracts = locationData.Contracts || [];
+                        const priceKey = priceType === 'basis' ? 'Basis Prices' : 'Fixed Prices';
+                        const prices = locationData[priceKey] || [];
+
+                        // Get prompt contract (use issue date for forward contract logic)
+                        const { contract: promptContract, price: promptPrice } = getPromptContract(contracts, prices, issueDate);
+
+                        // Get active strips (use issue date for strip logic)
+                        const activeStrips = getActiveStrips(issueDate, numStrips);
+
+                        // Calculate each strip
+                        const stripPrices = {};
+                        const stripDetails = {};
+                        for (const stripDef of activeStrips) {
+                            const stripName = stripDef.name;
+                            const price = calculateStripPrice(contracts, prices, stripDef, issueDate);
+                            if (price !== null) {
+                                stripPrices[stripName] = Math.round(price * 1000) / 1000;
+                                // Get detailed breakdown
+                                const details = getStripDetails(contracts, prices, stripDef, issueDate);
+                                stripDetails[stripName] = details;
+                            }
+                        }
+
+                        if (Object.keys(stripPrices).length > 0 || promptPrice !== null) {
+                            const resultEntry = {
+                                trade_date: tradeDate,
+                                strips: stripPrices
+                            };
+                            if (promptPrice !== null) {
+                                resultEntry.prompt_contract = promptContract;
+                                resultEntry.prompt_price = Math.round(promptPrice * 1000) / 1000;
+                            }
+                            results.push(resultEntry);
+
+                            // Store detailed data
+                            detailedData.push({
+                                trade_date: tradeDate,
+                                prompt_contract: promptContract,
+                                prompt_price: promptPrice !== null ? Math.round(promptPrice * 1000) / 1000 : null,
+                                strip_details: stripDetails
+                            });
+
+                            addProgressLog(progressLog, `[${i + 1}/${issueDates.length}] Issue ${issueDate} / Trade ${tradeDate} - Calculated ${Object.keys(stripPrices).length} strips`);
+                        }
+
+                    } catch (error) {
+                        if (error.message.includes('404')) {
+                            skipped++;
+                            addProgressLog(progressLog, `[${i + 1}/${issueDates.length}] Issue ${issueDate} / Trade ${tradeDate} - No data (weekend/holiday)`);
+                        } else {
+                            throw error;
+                        }
+                    }
+                }
+
+                if (results.length === 0) {
+                    statusDiv.innerHTML = '<div class="error">No data found for the selected date range and location.</div>';
+                    return;
+                }
+
+                // Get unique strip names in chronological order
+                const stripNames = [];
+                for (const result of results) {
+                    for (const stripName of Object.keys(result.strips)) {
+                        if (!stripNames.includes(stripName)) {
+                            stripNames.push(stripName);
+                        }
+                    }
+                }
+
+                // Store for Excel export
+                lastCalculation = {
+                    location_name: locationName,
+                    price_type: priceType,
+                    start_date: startDate,
+                    end_date: endDate,
+                    strip_names: stripNames,
+                    detailed_data: detailedData
+                };
+
+                // Display results
+                displayResults({
+                    location: locationName,
+                    price_type: priceType,
+                    dates_processed: results.length,
+                    dates_skipped: skipped,
+                    strip_names: stripNames,
+                    data: results
+                });
+
+                statusDiv.innerHTML = `<div class="success">Success! Processed ${results.length} dates${skipped > 0 ? ` (${skipped} skipped - weekends/holidays)` : ''}.</div>`;
+                resultsContainer.style.display = 'block';
+
+            } catch (error) {
+                console.error('Error:', error);
+                statusDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Calculate Strips';
+            }
+        });
+
+        function addProgressLog(container, message) {
+            const logEntry = document.createElement('div');
+            logEntry.textContent = message;
+            container.appendChild(logEntry);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // =====================================================================
+        // DISPLAY RESULTS
+        // =====================================================================
+        function displayResults(data) {
+            const tableHead = document.getElementById('tableHead');
+            const tableBody = document.getElementById('tableBody');
+            const resultsMeta = document.getElementById('resultsMeta');
+
+            // Clear existing content
+            tableHead.innerHTML = '';
+            tableBody.innerHTML = '';
+
+            // Display metadata
+            resultsMeta.innerHTML = `
+                <p><strong>Location:</strong> ${data.location} |
+                <strong>Price Type:</strong> ${data.price_type === 'basis' ? 'Basis' : 'Fixed'} |
+                <strong>Dates:</strong> ${data.dates_processed}</p>
+            `;
+
+            // Create header row
+            const headerRow = document.createElement('tr');
+
+            // Trade Date column
+            const tradeDateHeader = document.createElement('th');
+            tradeDateHeader.textContent = 'Trade Date';
+            headerRow.appendChild(tradeDateHeader);
+
+            // Prompt column
+            const promptHeader = document.createElement('th');
+            promptHeader.textContent = 'Prompt';
+            promptHeader.title = 'Nearest forward contract price';
+            headerRow.appendChild(promptHeader);
+
+            // Strip columns
+            data.strip_names.forEach(stripName => {
+                const th = document.createElement('th');
+                th.textContent = stripName;
+                headerRow.appendChild(th);
+            });
+
+            tableHead.appendChild(headerRow);
+
+            // Create data rows
+            data.data.forEach(row => {
+                const tr = document.createElement('tr');
+
+                // Trade date
+                const tdDate = document.createElement('td');
+                tdDate.textContent = row.trade_date;
+                tdDate.style.fontWeight = 'bold';
+                tr.appendChild(tdDate);
+
+                // Prompt contract price
+                const tdPrompt = document.createElement('td');
+                tdPrompt.textContent = row.prompt_price !== undefined ? row.prompt_price : '';
+                tdPrompt.title = row.prompt_contract || '';
+                tr.appendChild(tdPrompt);
+
+                // Strip prices
+                data.strip_names.forEach(stripName => {
+                    const td = document.createElement('td');
+                    const price = row.strips[stripName];
+                    td.textContent = price !== undefined ? price : '';
+                    tr.appendChild(td);
+                });
+
+                tableBody.appendChild(tr);
+            });
+
+            // Render the chart
+            renderChart(data);
+        }
+
+        // =====================================================================
+        // CHART RENDERING
+        // =====================================================================
+        function renderChart(data) {
+            const chartContainer = document.getElementById('chartContainer');
+
+            // Dispose any existing chart instance
+            if (chartContainer && echarts.getInstanceByDom(chartContainer)) {
+                echarts.getInstanceByDom(chartContainer).dispose();
+            }
+
+            // Wait a moment for the container to be rendered
+            setTimeout(() => {
+                // Initialize ECharts
+                const chart = echarts.init(chartContainer);
+
+                // Prepare data for chart
+                const dates = data.data.map(row => row.trade_date);
+
+                // Define color palette matching the reference images
+                const colorPalette = [
+                    '#2c3e50',  // Dark navy for Prompt Contract
+                    '#9b59b6',  // Purple for first Winter
+                    '#3498db',  // Blue for first Summer
+                    '#16a085',  // Teal for second Winter
+                    '#95a5a6',  // Gray for second Summer
+                    '#e74c3c',  // Red
+                    '#f39c12',  // Orange
+                    '#27ae60',  // Green
+                    '#8e44ad',  // Dark purple
+                    '#2980b9',  // Dark blue
+                ];
+
+                // Create series for each strip
+                const series = [];
+
+                // Add prompt price series
+                const promptPrices = data.data.map(row =>
+                    row.prompt_price !== undefined ? row.prompt_price : null
+                );
+                if (promptPrices.some(p => p !== null)) {
+                    series.push({
+                        name: 'Prompt Contract',
+                        type: 'line',
+                        data: promptPrices,
+                        smooth: false,
+                        symbol: 'none',
+                        symbolSize: 1,
+                        lineStyle: {
+                            width: 2,
+                            color: colorPalette[0]
+                        },
+                        itemStyle: {
+                            color: colorPalette[0]
+                        },
+                        emphasis: {
+                            focus: 'series',
+                            lineStyle: {
+                                width: 3
+                            }
+                        },
+                        connectNulls: true,
+                        endLabel: {
+                            show: true,
+                            formatter: function(params) {
+                                return '$' + params.value.toFixed(2);
+                            },
+                            color: colorPalette[0],
+                            fontSize: 13
+                        }
+                    });
+                }
+
+                // Add strip price series
+                data.strip_names.forEach((stripName, index) => {
+                    const stripPrices = data.data.map(row => {
+                        const price = row.strips[stripName];
+                        return price !== undefined ? price : null;
+                    });
+
+                    const colorIndex = (series.length) % colorPalette.length;
+
+                    series.push({
+                        name: stripName,
+                        type: 'line',
+                        data: stripPrices,
+                        smooth: false,
+                        symbol: 'none',
+                        symbolSize: 1,
+                        lineStyle: {
+                            width: 2,
+                            color: colorPalette[colorIndex]
+                        },
+                        itemStyle: {
+                            color: colorPalette[colorIndex]
+                        },
+                        emphasis: {
+                            focus: 'series',
+                            lineStyle: {
+                                width: 3
+                            }
+                        },
+                        connectNulls: true,
+                        endLabel: {
+                            show: true,
+                            formatter: function(params) {
+                                return '$' + params.value.toFixed(2);
+                            },
+                            color: colorPalette[colorIndex],
+                            fontSize: 13
+                        }
+                    });
+                });
+
+                // Format dates for x-axis
+                const formattedDates = dates.map((date, index) => {
+                    const d = new Date(date + 'T00:00:00');  // Force local timezone
+                    const month = d.toLocaleString('en-US', { month: 'short' });
+                    const year = d.getFullYear();
+
+                    // Show month and year for first date, then just month unless year changes
+                    if (index === 0) {
+                        return month + '\n' + year;
+                    }
+
+                    const prevDate = new Date(dates[index - 1] + 'T00:00:00');  // Force local timezone
+                    const prevYear = prevDate.getFullYear();
+
+                    if (year !== prevYear || d.getMonth() === 0) {
+                        return month + '\n' + year;
+                    }
+
+                    return month;
+                });
+
+                // Chart options
+                const option = {
+                    title: {
+                        text: data.location + ' Basis Seasonal Strips',
+                        left: 'center',
+                        top: 10,
+                        textStyle: {
+                            fontSize: 18,
+                            fontWeight: 'bold',
+                            color: '#000'
+                        }
+                    },
+                    tooltip: {
+                        trigger: 'axis',
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        borderColor: '#ccc',
+                        borderWidth: 1,
+                        textStyle: {
+                            color: '#000',
+                            fontSize: 13
+                        },
+                        axisPointer: {
+                            type: 'line',
+                            lineStyle: {
+                                color: '#999',
+                                width: 1,
+                                type: 'solid'
+                            }
+                        },
+                        formatter: function(params) {
+                            if (params.length === 0) return '';
+
+                            // Get the date - use parseDate to avoid timezone issues
+                            const dateStr = dates[params[0].dataIndex];
+                            const date = new Date(dateStr + 'T00:00:00');  // Force local timezone
+                            const formattedDate = date.toLocaleDateString('en-US', {
+                                month: 'long',
+                                day: 'numeric',
+                                year: 'numeric'
+                            });
+
+                            let result = '';
+
+                            // Show each series
+                            params.forEach((param, index) => {
+                                if (param.value !== null && param.value !== undefined) {
+                                    const color = param.color;
+                                    const seriesName = param.seriesName;
+                                    const value = '$' + param.value.toFixed(2);
+
+                                    if (index > 0) result += '<br/>';
+                                    result += '<div style="margin: 4px 0;">';
+                                    result += '<span style="font-weight: bold; color: ' + color + ';">' + seriesName + '</span><br/>';
+                                    result += '<span style="font-size: 12px; color: #666;">' + formattedDate + '</span><br/>';
+                                    result += '<span style="font-size: 14px; font-weight: bold;">' + value + '</span>';
+                                    result += '</div>';
+                                }
+                            });
+
+                            return result;
+                        }
+                    },
+                    legend: {
+                        data: series.map(s => s.name),
+                        top: 40,
+                        left: 'center',
+                        type: 'plain',
+                        itemWidth: 30,
+                        itemHeight: 2,
+                        textStyle: {
+                            fontSize: 14,
+                            color: '#666'
+                        }
+                    },
+                    grid: {
+                        left: '60px',
+                        right: '100px',
+                        bottom: '60px',
+                        top: '90px',
+                        containLabel: false
+                    },
+                    xAxis: {
+                        type: 'category',
+                        data: formattedDates,
+                        boundaryGap: false,
+                        axisLine: {
+                            lineStyle: {
+                                color: '#333'
+                            }
+                        },
+                        axisTick: {
+                            show: false
+                        },
+                        axisLabel: {
+                            color: '#333',
+                            fontSize: 13,
+                            lineHeight: 18,
+                            interval: Math.floor(dates.length / 10) || 0
+                        },
+                        splitLine: {
+                            show: false
+                        }
+                    },
+                    yAxis: {
+                        type: 'value',
+                        axisLine: {
+                            show: true,
+                            lineStyle: {
+                                color: '#333'
+                            }
+                        },
+                        axisTick: {
+                            show: false
+                        },
+                        axisLabel: {
+                            formatter: function(value) {
+                                return '$' + value.toFixed(2);
+                            },
+                            color: '#333',
+                            fontSize: 13
+                        },
+                        splitLine: {
+                            lineStyle: {
+                                color: '#e0e0e0',
+                                width: 1
+                            }
+                        }
+                    },
+                    series: series
+                };
+
+                // Set option and render
+                chart.setOption(option);
+
+                // Force resize after a moment
+                setTimeout(() => {
+                    chart.resize();
+                }, 100);
+
+                // Make chart responsive
+                window.addEventListener('resize', function() {
+                    chart.resize();
+                });
+            }, 50);
+        }
+
+        // =====================================================================
+        // COPY TO CLIPBOARD
+        // =====================================================================
+        function copyToClipboard() {
+            const table = document.getElementById('resultsTable');
+            let text = '';
+
+            // Copy headers
+            const headerCells = table.querySelectorAll('thead th');
+            headerCells.forEach((cell, i) => {
+                text += cell.textContent;
+                if (i < headerCells.length - 1) text += '\t';
+            });
+            text += '\n';
+
+            // Copy data rows
+            const rows = table.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                cells.forEach((cell, i) => {
+                    text += cell.textContent;
+                    if (i < cells.length - 1) text += '\t';
+                });
+                text += '\n';
+            });
+
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Copied to clipboard!');
+            }).catch(err => {
+                alert('Error copying: ' + err);
+            });
+        }
+
+        // =====================================================================
+        // EXCEL EXPORT
+        // =====================================================================
+        function downloadDetailedBreakdown() {
+            if (!lastCalculation) {
+                alert('No calculation data available. Please run a calculation first.');
+                return;
+            }
+
+            try {
+                const wb = XLSX.utils.book_new();
+                const locationName = lastCalculation.location_name;
+                const priceType = lastCalculation.price_type;
+                const stripNames = lastCalculation.strip_names;
+                const detailedData = lastCalculation.detailed_data;
+
+                // Create Summary sheet
+                const summaryData = [
+                    ['Location:', locationName],
+                    ['Price Type:', priceType],
+                    ['Start Date:', lastCalculation.start_date],
+                    ['End Date:', lastCalculation.end_date],
+                    [],
+                    ['Trade Date', 'Prompt Contract', 'Prompt Price', ...stripNames]
+                ];
+
+                // Add summary data rows
+                detailedData.forEach(entry => {
+                    const row = [
+                        entry.trade_date,
+                        entry.prompt_contract || '',
+                        entry.prompt_price !== null ? entry.prompt_price : ''
+                    ];
+
+                    // Add strip averages
+                    stripNames.forEach(stripName => {
+                        const details = entry.strip_details[stripName] || [];
+                        if (details.length > 0) {
+                            const sum = details.reduce((a, b) => a + b.price, 0);
+                            const avg = sum / details.length;
+                            row.push(Math.round(avg * 1000) / 1000);
+                        } else {
+                            row.push('');
+                        }
+                    });
+
+                    summaryData.push(row);
+                });
+
+                const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+                XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+                // Create a sheet for each strip
+                stripNames.forEach(stripName => {
+                    // Get all unique contracts for this strip
+                    const allContracts = new Set();
+                    detailedData.forEach(entry => {
+                        const details = entry.strip_details[stripName] || [];
+                        details.forEach(detail => {
+                            allContracts.add(detail.contract);
+                        });
+                    });
+
+                    // Sort contracts chronologically
+                    const sortedContracts = Array.from(allContracts).sort();
+
+                    // Create sheet data
+                    const sheetData = [
+                        ['Trade Date', ...sortedContracts, 'Average']
+                    ];
+
+                    // Add data rows
+                    detailedData.forEach(entry => {
+                        const row = [entry.trade_date];
+                        const details = entry.strip_details[stripName] || [];
+                        const detailDict = {};
+                        details.forEach(d => {
+                            detailDict[d.contract] = d.price;
+                        });
+
+                        const prices = [];
+                        sortedContracts.forEach(contract => {
+                            if (detailDict[contract] !== undefined) {
+                                const price = Math.round(detailDict[contract] * 1000) / 1000;
+                                row.push(price);
+                                prices.push(detailDict[contract]);
+                            } else {
+                                row.push('');
+                            }
+                        });
+
+                        // Add average
+                        if (prices.length > 0) {
+                            const sum = prices.reduce((a, b) => a + b, 0);
+                            const avg = Math.round((sum / prices.length) * 1000) / 1000;
+                            row.push(avg);
+                        } else {
+                            row.push('');
+                        }
+
+                        sheetData.push(row);
+                    });
+
+                    // Sanitize sheet name (Excel has restrictions)
+                    const sheetName = stripName.substring(0, 31).replace(/\//g, '-');
+                    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+                    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                });
+
+                // Generate filename
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+                const filename = `strip_details_${locationName.replace(/ /g, '_')}_${timestamp}.xlsx`;
+
+                // Download file
+                XLSX.writeFile(wb, filename);
+
+            } catch (error) {
+                console.error('Error creating Excel file:', error);
+                alert('Error creating Excel file: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

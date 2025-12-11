@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Strips - NGI Chart Lab{% endblock %}
+
+{% block content %}
+<div class="tool-page">
+    <aside class="tool-sidebar">
+        <h2>Forward Strips</h2>
+        <form id="strips-form">
+            <div class="form-group">
+                <label for="issue_date">Issue Date</label>
+                <input type="date" id="issue_date" name="issue_date" required>
+            </div>
+
+            <div class="form-group">
+                <label for="location">Location</label>
+                <select id="location" name="location" required>
+                    <option value="">Select location</option>
+                    <option value="henry_hub">Henry Hub</option>
+                    <option value="socal_citygate">SoCal Citygate</option>
+                    <option value="pge_citygate">PG&E Citygate</option>
+                    <option value="chicago_citygate">Chicago Citygate</option>
+                    <option value="nymex">NYMEX</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="months_forward">Months Forward</label>
+                <select id="months_forward" name="months_forward">
+                    <option value="12">12 months</option>
+                    <option value="24">24 months</option>
+                    <option value="36">36 months</option>
+                    <option value="48">48 months</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">Load Chart</button>
+        </form>
+    </aside>
+
+    <section class="tool-chart">
+        <h2>Forward Strip Curve</h2>
+        <div id="progressLog" class="progress-log"></div>
+        <div id="chart">
+            <div class="chart-loading">Select issue date and location, then click "Load Chart"</div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/strips.js') }}"></script>
+{% endblock %}

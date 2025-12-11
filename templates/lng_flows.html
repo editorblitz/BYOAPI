@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}LNG Flows - NGI Chart Lab{% endblock %}
+
+{% block content %}
+<div class="tool-page">
+    <aside class="tool-sidebar">
+        <h2>LNG Flows</h2>
+        <form id="lng-form">
+            <div class="form-group">
+                <label for="start_date">Start Date</label>
+                <input type="date" id="start_date" name="start_date" required>
+            </div>
+
+            <div class="form-group">
+                <label for="end_date">End Date</label>
+                <input type="date" id="end_date" name="end_date" required>
+            </div>
+
+            <div class="form-group">
+                <label for="terminal">Terminal (optional)</label>
+                <select id="terminal" name="terminal">
+                    <option value="">All Terminals</option>
+                    <option value="sabine_pass">Sabine Pass</option>
+                    <option value="cameron">Cameron LNG</option>
+                    <option value="freeport">Freeport LNG</option>
+                    <option value="corpus_christi">Corpus Christi</option>
+                    <option value="cove_point">Cove Point</option>
+                    <option value="elba_island">Elba Island</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">Load Chart</button>
+        </form>
+    </aside>
+
+    <section class="tool-chart">
+        <h2>LNG Export Flows</h2>
+        <div id="progressLog" class="progress-log"></div>
+        <div id="chart">
+            <div class="chart-loading">Select date range and terminal, then click "Load Chart"</div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/lng_flows.js') }}"></script>
+{% endblock %}

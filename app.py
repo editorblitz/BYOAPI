@@ -1,0 +1,165 @@
+"""
+BYO API Dashboard - Main Flask Application
+A secure charting app for NGI data using "Bring Your Own API" authentication.
+"""
+
+import os
+from datetime import timedelta
+
+from flask import Flask, redirect, url_for, render_template, session
+from flask_session import Session
+from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from dotenv import load_dotenv
+
+# Load environment variables from .env file (for local development)
+load_dotenv()
+
+# Import auth module
+from auth import auth_bp, init_encryption, register_before_request, require_api_creds
+
+# Create Flask app
+app = Flask(__name__)
+
+# ============= CONFIGURATION =============
+
+# Secret key for session signing
+app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', os.urandom(32).hex())
+
+# Session configuration - server-side filesystem storage
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_FILE_DIR'] = './.flask_session'
+app.config['SESSION_PERMANENT'] = True
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # Max lifetime
+app.config['SESSION_COOKIE_SECURE'] = True  # HTTPS only
+app.config['SESSION_COOKIE_HTTPONLY'] = True  # No JavaScript access
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
+
+# Initialize extensions
+Session(app)
+csrf = CSRFProtect(app)
+
+# Rate limiting for brute force protection
+limiter = Limiter(
+    key_func=get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
+
+# Initialize encryption
+init_encryption(app)
+
+# Register before_request handler
+register_before_request(app)
+
+# Register auth blueprint
+app.register_blueprint(auth_bp)
+
+# ============= DATA ROUTE BLUEPRINTS =============
+
+# Import and register data route blueprints
+from data_routes.lng_flows import lng_flows_bp
+from data_routes.daily_prices import daily_prices_bp
+from data_routes.spreads import spreads_bp
+from data_routes.strips import strips_bp
+from data_routes.netbacks import netbacks_bp
+
+app.register_blueprint(lng_flows_bp)
+app.register_blueprint(daily_prices_bp)
+app.register_blueprint(spreads_bp)
+app.register_blueprint(strips_bp)
+app.register_blueprint(netbacks_bp)
+
+# ============= MAIN ROUTES =============
+
+@app.route('/')
+def index():
+    """Landing page - redirect based on auth status."""
+    if session.get('ngi_email_enc'):
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('auth.login'))
+
+
+@app.route('/dashboard')
+@require_api_creds
+def dashboard():
+    """Main dashboard hub with links to all tools."""
+    session_info = {
+        'email': session.get('user_email', 'Unknown'),
+        'remember_me': session.get('remember_me', False),
+        'expires_in': '7 days' if session.get('remember_me') else '8 hours'
+    }
+
+    tools = [
+        {
+            'name': 'Daily Prices',
+            'description': 'View and chart daily natural gas prices across locations',
+            'url': url_for('daily_prices.daily_prices_page'),
+            'icon': 'chart-line'
+        },
+        {
+            'name': 'Spreads',
+            'description': 'Analyze price spreads between locations',
+            'url': url_for('spreads.spreads_page'),
+            'icon': 'arrows-left-right'
+        },
+        {
+            'name': 'Strips',
+            'description': 'View forward strip pricing data',
+            'url': url_for('strips.strips_page'),
+            'icon': 'layer-group'
+        },
+        {
+            'name': 'LNG Flows',
+            'description': 'Track LNG import and export flows',
+            'url': url_for('lng_flows.lng_flows_page'),
+            'icon': 'ship'
+        },
+        {
+            'name': 'Netbacks',
+            'description': 'Calculate and visualize netback values',
+            'url': url_for('netbacks.netbacks_page'),
+            'icon': 'calculator'
+        }
+    ]
+
+    return render_template('dashboard.html', session_info=session_info, tools=tools)
+
+
+# ============= ERROR HANDLERS =============
+
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    """Handle rate limit exceeded errors."""
+    return render_template('error.html',
+                           error_code=429,
+                           error_message="Too many requests. Please wait a moment and try again."), 429
+
+
+@app.errorhandler(500)
+def internal_error(e):
+    """Handle internal server errors."""
+    return render_template('error.html',
+                           error_code=500,
+                           error_message="An internal error occurred. Please try again later."), 500
+
+
+# ============= RATE LIMITING FOR AUTH =============
+
+# Apply stricter rate limiting to auth route
+@limiter.limit("5 per minute")
+@app.route('/auth', methods=['POST'])
+def rate_limited_auth():
+    """This route handler exists only to apply rate limiting to POST /auth."""
+    # The actual handling is done by auth_bp
+    pass
+
+
+# ============= MAIN =============
+
+if __name__ == '__main__':
+    # Run with debug=False in production
+    debug_mode = os.environ.get('FLASK_ENV', 'development') == 'development'
+    app.run(host='0.0.0.0', port=5000, debug=debug_mode)

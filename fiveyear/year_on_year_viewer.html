@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}NGI Price Data - Year on Year Price Viewer{% endblock %}
+
+{% block content %}
+
+<!-- Database Status -->
+<div class="stats-row">
+    <span class="stats-item"><strong>Records:</strong> {{ "{:,}".format(stats.total_records) }}</span>
+    <span class="stats-item"><strong>Locations:</strong> {{ stats.unique_locations }}</span>
+    {% if stats.date_range.min_date and stats.date_range.max_date %}
+    <span class="stats-item"><strong>Data Period:</strong> {{ stats.date_range.min_date }} to {{ stats.date_range.max_date }}</span>
+    {% endif %}
+</div>
+
+<!-- Year-on-Year Chart Section -->
+<div class="form-section">
+    <h3>Year-on-Year Price Comparison</h3>
+
+    <form id="chartForm">
+        <div class="form-row">
+            <span class="form-label">Region:</span>
+            <select id="regionSelect" class="form-input" onchange="updateLocations()">
+                <option value="">Select Region</option>
+                {% for region in locations_by_region.keys() %}
+                <option value="{{ region }}" {% if region == 'South Louisiana' %}selected{% endif %}>{{ region }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-row">
+            <span class="form-label">Location:</span>
+            <select id="locationSelect" class="form-input">
+                <option value="">Select Location</option>
+            </select>
+        </div>
+
+        <div class="form-row">
+            <span class="form-label">Comparison:</span>
+            <input type="radio" id="modeFullYear" name="comparisonMode" value="full" checked>
+            <label for="modeFullYear" style="margin-right: 15px; font-weight: normal;">Full Previous Year</label>
+            <input type="radio" id="modeYTD" name="comparisonMode" value="ytd">
+            <label for="modeYTD" style="margin-right: 15px; font-weight: normal;">Year-to-Date Only</label>
+            <input type="radio" id="modeFiveYear" name="comparisonMode" value="fiveyear">
+            <label for="modeFiveYear" style="font-weight: normal;">Versus Five-Year Range</label>
+        </div>
+
+        <div class="form-row">
+            <input type="submit" value="Update Chart" class="btn btn-primary">
+            <input type="button" value="Copy Data" class="btn" onclick="copyChartDataToClipboard()" id="copyDataBtn" style="display: none;">
+            <span style="margin-left: 20px; font-size: 10px; color: #666666;">
+                <span id="comparisonDescription">Full previous year vs. current year (Jan 1 - present)</span>
+            </span>
+        </div>
+    </form>
+</div>
+
+<!-- Chart Display -->
+<div class="chart-container">
+    <div id="priceChart" style="width: 100%; height: 450px;"></div>
+</div>
+
+<!-- Chart Information -->
+<div id="chartInfo" class="info-box" style="display: none;">
+    <strong>Location:</strong> <span id="chartLocationName">-</span> &nbsp;&nbsp;
+    <strong>Region:</strong> <span id="chartRegionName">-</span> &nbsp;&nbsp;
+    <strong>Current Year Records:</strong> <span id="currentYearRecords">-</span> &nbsp;&nbsp;
+    <strong>Previous Year Records:</strong> <span id="previousYearRecords">-</span>
+</div>
+
+<!-- Available Locations -->
+<div class="location-section">
+    <h3>Available Locations by Region</h3>
+    <div class="location-list">
+        {% for region, locations in locations_by_region.items() %}
+        <h4>{{ region }}</h4>
+        <ul>
+            {% for location in locations[:8] %}
+            <li>
+                <a href="javascript:void(0)" onclick="selectLocation('{{ location.point_code }}')">
+                    {{ location.location_name }} ({{ location.point_code }})
+                </a>
+            </li>
+            {% endfor %}
+            {% if locations|length > 8 %}
+            <li><em>... {{ locations|length - 8 }} additional locations</em></li>
+            {% endif %}
+        </ul>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+// Pass location data to JavaScript
+const locationsByRegion = {{ locations_by_region | tojson | safe }};
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/year_on_year_viewer.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}NGI Chart Lab{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <!-- ECharts CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <a href="{{ url_for('dashboard') }}">NGI Chart Lab</a>
+        </div>
+        <div class="nav-links">
+            <a href="{{ url_for('daily_prices.daily_prices_page') }}">Daily Prices</a>
+            <a href="{{ url_for('spreads.spreads_page') }}">Spreads</a>
+            <a href="{{ url_for('strips.strips_page') }}">Strips</a>
+            <a href="{{ url_for('lng_flows.lng_flows_page') }}">LNG Flows</a>
+            <a href="{{ url_for('netbacks.netbacks_page') }}">Netbacks</a>
+        </div>
+        <div class="nav-user">
+            {% if session.get('user_email') %}
+            <span class="user-email">{{ session.get('user_email') }}</span>
+            <a href="{{ url_for('auth.logout') }}" class="btn btn-logout">Logout</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <main class="main-content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <p>NGI Chart Lab - Powered by <a href="https://www.naturalgasintel.com" target="_blank">Natural Gas Intelligence</a></p>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

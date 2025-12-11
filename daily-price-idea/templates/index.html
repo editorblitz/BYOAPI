@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NGI Daily Prices Pro</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' }
+            }
+          }
+        }
+      }
+    </script>
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body class="bg-gray-50 text-slate-800 antialiased min-h-screen flex flex-col pb-24">
+
+    <!-- LOGIN OVERLAY -->
+    <div id="loginOverlay" class="fixed inset-0 bg-gray-50 z-50 flex flex-col items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-xl shadow-lg border border-gray-100 w-full max-w-md space-y-6">
+            <div class="text-center">
+                <h2 class="text-2xl font-bold text-gray-900">Welcome Back</h2>
+                <p class="text-sm text-gray-500 mt-2">Sign in to access NGI daily prices</p>
+            </div>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Email</label>
+                    <input type="email" id="loginEmail" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" placeholder="you@company.com" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">API Key</label>
+                    <input type="password" id="loginKey" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-2 rounded-lg transition-colors">Sign In</button>
+            </form>
+            <div id="loginError" class="hidden text-sm text-red-600 bg-red-50 p-3 rounded border border-red-100 text-center"></div>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <header class="bg-white border-b border-gray-200 h-16 flex-none z-30">
+        <div class="max-w-[1600px] mx-auto px-4 h-full flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-brand-600 w-8 h-8 rounded flex items-center justify-center text-white font-bold shadow">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                </div>
+                <h1 class="text-xl font-bold text-gray-900 tracking-tight">NGI <span class="text-brand-600">Pro</span></h1>
+            </div>
+            <button id="logoutBtn" class="text-sm font-medium text-gray-500 hover:text-red-600 transition-colors">Sign Out</button>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-[1600px] w-full mx-auto p-4 lg:p-6 flex gap-6">
+        
+        <!-- SIDEBAR -->
+        <aside class="w-80 flex-none bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col max-h-[calc(100vh-8rem)] overflow-hidden">
+            <!-- Tabs -->
+            <div class="flex border-b border-gray-100">
+                <button data-mode="standard" class="mode-tab flex-1 py-3 text-xs font-bold uppercase tracking-wide text-brand-600 border-b-2 border-brand-600 bg-brand-50">Standard</button>
+                <button data-mode="seasonality" class="mode-tab flex-1 py-3 text-xs font-bold uppercase tracking-wide text-gray-500 hover:bg-gray-50">Seasonal</button>
+                <button data-mode="compare" class="mode-tab flex-1 py-3 text-xs font-bold uppercase tracking-wide text-gray-500 hover:bg-gray-50">Compare</button>
+            </div>
+
+            <div class="p-5 flex-1 overflow-y-auto custom-scroll space-y-6">
+                
+                <!-- Date Section -->
+                <div id="dateSection">
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Date Range</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="date" id="startDate" class="w-full px-2 py-2 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-brand-500 outline-none">
+                        <input type="date" id="endDate" class="w-full px-2 py-2 border border-gray-200 rounded text-sm focus:ring-1 focus:ring-brand-500 outline-none">
+                    </div>
+                </div>
+
+                <!-- Seasonality Year Section (Hidden by default) -->
+                <div id="seasonalitySection" class="hidden">
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Analysis Year</label>
+                    <select id="analysisYear" class="w-full px-3 py-2 border border-gray-200 rounded text-sm bg-white mb-3"></select>
+                    
+                    <div class="flex items-center space-x-2 bg-gray-50 p-2 rounded border border-gray-100">
+                        <input type="checkbox" id="showFiveYear" class="w-4 h-4 text-brand-600 rounded">
+                        <label for="showFiveYear" class="text-xs font-medium text-gray-600 cursor-pointer">Show 5-Year Range</label>
+                    </div>
+                </div>
+
+                <hr class="border-gray-100">
+
+                <!-- Location Section -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Location</label>
+                    <select id="regionSelect" class="w-full px-3 py-2 border border-gray-200 rounded text-sm bg-white mb-2"></select>
+                    
+                    <div class="flex gap-2">
+                        <select id="locationSelect" class="w-full px-3 py-2 border border-gray-200 rounded text-sm bg-white"></select>
+                        <button id="addToCompareBtn" class="hidden px-3 py-2 bg-brand-100 text-brand-700 rounded text-sm font-bold hover:bg-brand-200">+</button>
+                    </div>
+                </div>
+
+                <!-- Compare List (Hidden by default) -->
+                <div id="compareListSection" class="hidden bg-gray-50 rounded border border-gray-100 p-3 min-h-[100px]">
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Selected Hubs</label>
+                    <div id="compareListContainer" class="space-y-2">
+                        <p class="text-xs text-gray-400 italic" id="emptyCompareMsg">No locations added.</p>
+                    </div>
+                </div>
+
+                <button id="analyzeBtn" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded shadow-sm hover:shadow transition-all active:scale-[0.98]">
+                    Submit
+                </button>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <div class="flex-1 flex flex-col gap-6">
+            
+            <!-- CHART -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex-none">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">Visual Analysis</h3>
+                    <span id="chartBadge" class="text-xs font-semibold uppercase px-2 py-1 bg-gray-100 text-gray-500 rounded">Standard Mode</span>
+                </div>
+                <div id="chartContainer" class="w-full h-[350px]"></div>
+            </div>
+
+            <!-- TABLE -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden max-h-[600px]">
+                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center flex-none">
+                    <h3 class="font-bold text-gray-800">Detailed Data</h3>
+                    <button id="copyTableBtn" class="text-xs font-semibold text-brand-600 hover:underline">Copy to Clipboard</button>
+                </div>
+                <div class="flex-1 overflow-auto custom-scroll">
+                    <table class="w-full text-sm text-left whitespace-nowrap">
+                        <thead class="bg-white text-gray-500 font-semibold sticky top-0 z-10 shadow-sm text-xs uppercase tracking-wider">
+                            <tr id="tableHeaderRow"></tr>
+                        </thead>
+                        <tbody id="tableBody" class="divide-y divide-gray-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- SYSTEM FOOTER -->
+    <div class="fixed bottom-0 left-0 right-0 z-40">
+        <div id="logDrawer" class="bg-slate-900 border-t border-slate-700 transition-all duration-300 ease-in-out h-0 overflow-hidden">
+            <div id="logContent" class="h-64 p-4 font-mono text-xs overflow-y-auto custom-scroll text-slate-300"></div>
+        </div>
+        <button id="logToggle" class="w-full bg-slate-950 border-t border-slate-800 h-9 flex items-center justify-between px-4 text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition-colors">
+            <div class="flex items-center gap-3">
+                <div id="statusDot" class="w-2 h-2 rounded-full bg-green-500"></div>
+                <span class="uppercase tracking-wider font-bold">System Status</span>
+                <span class="w-px h-3 bg-slate-700 mx-1"></span>
+                <span id="lastLogMsg" class="font-mono truncate max-w-md text-slate-500">System ready</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <svg id="logArrow" class="transition-transform duration-300" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
+            </div>
+        </button>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/daily_prices.js') }}"></script>
+</body>
+</html>

@@ -84,6 +84,23 @@ def api_daily_prices():
 
             payload = process_comparison_view(datasets)
 
+        elif mode == 'spreads':
+            start_date = request.args.get('start_date')
+            end_date = request.args.get('end_date')
+            location1 = request.args.get('location1')
+            location2 = request.args.get('location2')
+
+            if not start_date or not end_date:
+                raise ValueError('start_date and end_date are required for spreads mode')
+            if not location1 or not location2:
+                raise ValueError('Both location1 and location2 are required for spreads mode')
+
+            # Fetch data for both locations
+            records1 = fetch_daily_prices(location1, start_date, end_date)
+            records2 = fetch_daily_prices(location2, start_date, end_date)
+
+            payload = process_spreads_view(records1, records2, location1, location2)
+
         else:
             return jsonify({'error': f'Unknown mode: {mode}'}), 400
 
@@ -680,3 +697,55 @@ def _build_flow_day_bucket(records):
         for mmdd in _iterate_flow_mmdd(start, end):
             bucket.setdefault(mmdd, []).append(price)
     return bucket
+
+
+def process_spreads_view(records1, records2, location1_code, location2_code):
+    """
+    Build payload for spreads mode (difference between two locations).
+
+    Spread = Location1 Average - Location2 Average
+    """
+    if not records1 or not records2:
+        return {'dates': [], 'series': [], 'table_columns': [], 'table_rows': []}
+
+    # Build price lookups by trade_date
+    prices1 = {row.get('trade_date'): row.get('average') for row in records1 if row.get('average') is not None}
+    prices2 = {row.get('trade_date'): row.get('average') for row in records2 if row.get('average') is not None}
+
+    # Find common dates and calculate spreads
+    common_dates = sorted(set(prices1.keys()) & set(prices2.keys()))
+    spreads = []
+
+    for date in common_dates:
+        spread = prices1[date] - prices2[date]
+        spreads.append(spread)
+
+    # Build series for chart
+    series = [{
+        'name': f'{location1_code} - {location2_code}',
+        'type': 'line',
+        'data': spreads,
+        'itemStyle': {'color': '#2563eb'},
+        'lineStyle': {'width': 3},
+        'symbol': 'none',
+        'showSymbol': False
+    }]
+
+    # Build table rows
+    table_rows = []
+    for idx, date in enumerate(common_dates):
+        spread = spreads[idx]
+        table_rows.append({
+            'date': date,
+            'location1': prices1[date],
+            'location2': prices2[date],
+            'spread': spread
+        })
+
+    return {
+        'dates': common_dates,
+        'series': series,
+        'table_columns': ['Date', f'{location1_code}', f'{location2_code}', 'Spread'],
+        'table_rows': table_rows,
+        'raw_records': []
+    }

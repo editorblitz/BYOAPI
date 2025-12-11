@@ -1,6 +1,11 @@
 """
 Spreads data routes.
 Provides API endpoints and page for price spread data visualization.
+
+DEPRECATED: This standalone spreads module is deprecated.
+Spreads functionality has been integrated into the Daily Prices module
+as a fourth mode. This file is kept for backwards compatibility but
+will be removed in a future release.
 """
 
 from flask import Blueprint, render_template, request, jsonify

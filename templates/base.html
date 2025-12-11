@@ -15,11 +15,11 @@
             <a href="{{ url_for('dashboard') }}">NGI Chart Lab</a>
         </div>
         <div class="nav-links">
-            <a href="{{ url_for('daily_prices.daily_prices_page') }}">Daily Prices</a>
-            <a href="{{ url_for('spreads.spreads_page') }}">Spreads</a>
-            <a href="{{ url_for('strips.strips_page') }}">Strips</a>
+            <a href="{{ url_for('daily_prices.daily_prices_page') }}">Spot Prices</a>
+            <a href="{{ url_for('strips.strips_page') }}">Forward Prices</a>
             <a href="{{ url_for('lng_flows.lng_flows_page') }}">LNG Flows</a>
             <a href="{{ url_for('netbacks.netbacks_page') }}">Netbacks</a>
+            <a href="{{ url_for('quick_charts.quick_charts_page') }}">Quick Charts</a>
         </div>
         <div class="nav-user">
             {% if session.get('user_email') %}

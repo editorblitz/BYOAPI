@@ -62,15 +62,17 @@ app.register_blueprint(auth_bp)
 # Import and register data route blueprints
 from data_routes.lng_flows import lng_flows_bp
 from data_routes.daily_prices import daily_prices_bp
-from data_routes.spreads import spreads_bp
+# from data_routes.spreads import spreads_bp  # DEPRECATED - Spreads now integrated into Daily Prices
 from data_routes.strips import strips_bp
 from data_routes.netbacks import netbacks_bp
+from data_routes.quick_charts import quick_charts_bp
 
 app.register_blueprint(lng_flows_bp)
 app.register_blueprint(daily_prices_bp)
-app.register_blueprint(spreads_bp)
+# app.register_blueprint(spreads_bp)  # DEPRECATED - Spreads now integrated into Daily Prices
 app.register_blueprint(strips_bp)
 app.register_blueprint(netbacks_bp)
+app.register_blueprint(quick_charts_bp)
 
 # ============= MAIN ROUTES =============
 
@@ -94,19 +96,13 @@ def dashboard():
 
     tools = [
         {
-            'name': 'Daily Prices',
-            'description': 'View and chart daily natural gas prices across locations',
+            'name': 'Spot Prices',
+            'description': 'View and chart daily natural gas prices, compare locations, analyze spreads, and explore seasonal patterns',
             'url': url_for('daily_prices.daily_prices_page'),
             'icon': 'chart-line'
         },
         {
-            'name': 'Spreads',
-            'description': 'Analyze price spreads between locations',
-            'url': url_for('spreads.spreads_page'),
-            'icon': 'arrows-left-right'
-        },
-        {
-            'name': 'Strips',
+            'name': 'Forward Prices',
             'description': 'View forward strip pricing data',
             'url': url_for('strips.strips_page'),
             'icon': 'layer-group'
@@ -122,6 +118,12 @@ def dashboard():
             'description': 'Calculate and visualize netback values',
             'url': url_for('netbacks.netbacks_page'),
             'icon': 'calculator'
+        },
+        {
+            'name': 'Quick Charts',
+            'description': 'Generate web-ready charts with 1-year lookback',
+            'url': url_for('quick_charts.quick_charts_page'),
+            'icon': 'chart-bar'
         }
     ]
 

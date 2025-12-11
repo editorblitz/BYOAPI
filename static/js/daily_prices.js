@@ -248,11 +248,17 @@ const App = {
 
     setupDates: function() {
         const today = new Date();
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(today.getDate() - 30);
-        
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setMonth(today.getMonth() - 1);
+
         document.getElementById('endDate').value = today.toISOString().split('T')[0];
-        document.getElementById('startDate').value = thirtyDaysAgo.toISOString().split('T')[0];
+        document.getElementById('startDate').value = oneMonthAgo.toISOString().split('T')[0];
+
+        // Set 1M as default active timeframe
+        const oneMonthBtn = document.querySelector('.timeframe-btn[data-timeframe="1M"]');
+        if(oneMonthBtn) {
+            oneMonthBtn.classList.add('active');
+        }
 
         // Populate Years
         const yearSelect = document.getElementById('analysisYear');
@@ -269,6 +275,7 @@ const App = {
     },
 
     setupLocations: function() {
+        // Setup main location select (for standard/seasonality modes)
         const regionSelect = document.getElementById('regionSelect');
         regionSelect.innerHTML = '';
         Object.keys(this.state.locations).forEach(r => {
@@ -283,13 +290,51 @@ const App = {
         }
 
         this.updateLocationDropdown();
+
+        // Setup spreads location selects (Location 1 and Location 2)
+        ['1', '2'].forEach(num => {
+            const regionSelectSpread = document.getElementById(`regionSelect${num}`);
+            if (regionSelectSpread) {
+                regionSelectSpread.innerHTML = '';
+                Object.keys(this.state.locations).forEach(r => {
+                    const opt = document.createElement('option');
+                    opt.value = r;
+                    opt.text = r;
+                    regionSelectSpread.appendChild(opt);
+                });
+
+                if(regionSelectSpread.options.length > 0) {
+                    regionSelectSpread.value = regionSelectSpread.options[0].value;
+                }
+
+                this.updateSpreadsLocationDropdown(num);
+            }
+        });
     },
 
     updateLocationDropdown: function() {
         const region = document.getElementById('regionSelect').value;
         const locSelect = document.getElementById('locationSelect');
         locSelect.innerHTML = '';
-        
+
+        const locs = this.state.locations[region] || [];
+        locs.forEach(l => {
+            const opt = document.createElement('option');
+            opt.value = l.value;
+            opt.text = l.name;
+            opt.dataset.name = l.name;
+            locSelect.appendChild(opt);
+        });
+    },
+
+    updateSpreadsLocationDropdown: function(locationNum) {
+        const regionSelect = document.getElementById(`regionSelect${locationNum}`);
+        const locSelect = document.getElementById(`locationSelect${locationNum}`);
+        if (!regionSelect || !locSelect) return;
+
+        const region = regionSelect.value;
+        locSelect.innerHTML = '';
+
         const locs = this.state.locations[region] || [];
         locs.forEach(l => {
             const opt = document.createElement('option');
@@ -308,8 +353,33 @@ const App = {
             });
         });
 
+        // Timeframe buttons
+        document.querySelectorAll('.timeframe-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.setTimeframe(e.target.dataset.timeframe);
+            });
+        });
+
+        // Clear timeframe selection when dates are manually changed
+        document.getElementById('startDate').addEventListener('change', () => {
+            document.querySelectorAll('.timeframe-btn').forEach(btn => btn.classList.remove('active'));
+        });
+        document.getElementById('endDate').addEventListener('change', () => {
+            document.querySelectorAll('.timeframe-btn').forEach(btn => btn.classList.remove('active'));
+        });
+
         // Region Change
         document.getElementById('regionSelect').addEventListener('change', () => this.updateLocationDropdown());
+
+        // Spreads region changes
+        const regionSelect1 = document.getElementById('regionSelect1');
+        const regionSelect2 = document.getElementById('regionSelect2');
+        if (regionSelect1) {
+            regionSelect1.addEventListener('change', () => this.updateSpreadsLocationDropdown('1'));
+        }
+        if (regionSelect2) {
+            regionSelect2.addEventListener('change', () => this.updateSpreadsLocationDropdown('2'));
+        }
 
         // Add to Compare
         document.getElementById('addToCompareBtn').addEventListener('click', () => {
@@ -380,25 +450,92 @@ const App = {
         const seasonSec = document.getElementById('seasonalitySection');
         const compareSec = document.getElementById('compareListSection');
         const addBtn = document.getElementById('addToCompareBtn');
+        const singleLocationSec = document.getElementById('singleLocationSection');
+        const spreadsLoc1Sec = document.getElementById('spreadsLocation1Section');
+        const spreadsLoc2Sec = document.getElementById('spreadsLocation2Section');
+        const timeframeSec = document.getElementById('timeframeSection');
 
         if(mode === 'standard') {
             dateSec.classList.remove('hidden');
             seasonSec.classList.add('hidden');
             compareSec.classList.add('hidden');
             addBtn.classList.add('hidden');
+            singleLocationSec.classList.remove('hidden');
+            spreadsLoc1Sec.classList.add('hidden');
+            spreadsLoc2Sec.classList.add('hidden');
+            timeframeSec.classList.remove('hidden');
         } else if(mode === 'seasonality') {
             dateSec.classList.add('hidden');
             seasonSec.classList.remove('hidden');
             compareSec.classList.add('hidden');
             addBtn.classList.add('hidden');
+            singleLocationSec.classList.remove('hidden');
+            spreadsLoc1Sec.classList.add('hidden');
+            spreadsLoc2Sec.classList.add('hidden');
+            timeframeSec.classList.add('hidden');
         } else if(mode === 'compare') {
             dateSec.classList.remove('hidden');
             seasonSec.classList.add('hidden');
             compareSec.classList.remove('hidden');
             addBtn.classList.remove('hidden');
+            singleLocationSec.classList.remove('hidden');
+            spreadsLoc1Sec.classList.add('hidden');
+            spreadsLoc2Sec.classList.add('hidden');
+            timeframeSec.classList.remove('hidden');
+        } else if(mode === 'spreads') {
+            dateSec.classList.remove('hidden');
+            seasonSec.classList.add('hidden');
+            compareSec.classList.add('hidden');
+            addBtn.classList.add('hidden');
+            singleLocationSec.classList.add('hidden');
+            spreadsLoc1Sec.classList.remove('hidden');
+            spreadsLoc2Sec.classList.remove('hidden');
+            timeframeSec.classList.remove('hidden');
         }
 
         this.updateCopyButtons();
+    },
+
+    setTimeframe: function(timeframe) {
+        const endDate = new Date();
+        const startDate = new Date();
+
+        // Calculate start date based on timeframe
+        switch(timeframe) {
+            case '1M':
+                startDate.setMonth(endDate.getMonth() - 1);
+                break;
+            case '2M':
+                startDate.setMonth(endDate.getMonth() - 2);
+                break;
+            case '3M':
+                startDate.setMonth(endDate.getMonth() - 3);
+                break;
+            case '6M':
+                startDate.setMonth(endDate.getMonth() - 6);
+                break;
+            case '1Y':
+                startDate.setFullYear(endDate.getFullYear() - 1);
+                break;
+            case '5Y':
+                startDate.setFullYear(endDate.getFullYear() - 5);
+                break;
+        }
+
+        // Update date inputs
+        document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+        document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+
+        // Update button states
+        document.querySelectorAll('.timeframe-btn').forEach(btn => {
+            if(btn.dataset.timeframe === timeframe) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+
+        this.log(`Timeframe set to ${timeframe}`);
     },
 
     setSystemStatus: function(state) {
@@ -512,6 +649,11 @@ const App = {
             params.append('location', locationValue);
             params.append('year', document.getElementById('analysisYear').value);
             params.append('showRange', document.getElementById('showFiveYear').checked);
+        } else if(mode === 'spreads') {
+            params.append('start_date', startDate);
+            params.append('end_date', endDate);
+            params.append('location1', document.getElementById('locationSelect1').value);
+            params.append('location2', document.getElementById('locationSelect2').value);
         } else {
             params.append('start_date', startDate);
             params.append('end_date', endDate);
@@ -757,6 +899,13 @@ const App = {
             const startDate = data.dates[0] || '';
             const endDate = data.dates[data.dates.length - 1] || '';
             subtitle = `Multi-location comparison from ${startDate} to ${endDate}`;
+        } else if (mode === 'spreads') {
+            const loc1Name = this.getSpreadsLocationName(1);
+            const loc2Name = this.getSpreadsLocationName(2);
+            title = `Spread: ${loc1Name} - ${loc2Name}`;
+            const startDate = data.dates[0] || '';
+            const endDate = data.dates[data.dates.length - 1] || '';
+            subtitle = `Price spread from ${startDate} to ${endDate}`;
         }
 
         titleEl.textContent = title;
@@ -902,6 +1051,15 @@ const App = {
         return 'Unknown Location';
     },
 
+    getSpreadsLocationName: function(locationNum) {
+        const locationSelect = document.getElementById(`locationSelect${locationNum}`);
+        if (locationSelect && locationSelect.selectedIndex >= 0) {
+            return locationSelect.options[locationSelect.selectedIndex].dataset.name ||
+                   locationSelect.options[locationSelect.selectedIndex].text;
+        }
+        return 'Unknown Location';
+    },
+
     renderTable: function(data) {
         // Headers
         const headerRow = document.getElementById('tableHeaderRow');
@@ -934,6 +1092,8 @@ const App = {
                 ];
             } else if (mode === 'seasonality') {
                 values = [row.date, row.curr, row.prev, row.diff, row.pct];
+            } else if (mode === 'spreads') {
+                values = [row.date, row.location1, row.location2, row.spread];
             } else if (mode === 'compare') {
                 // For compare mode, first column is date, then each location
                 values = [row.date];
@@ -972,6 +1132,15 @@ const App = {
                         td.textContent = Math.round(val).toLocaleString();
                     } else if (colName.includes('Diff') && !colName.includes('%')) {
                         // Dollar diff column
+                        td.textContent = '$' + val.toFixed(3);
+                        if (val > 0) {
+                            td.classList.add('text-green-600');
+                            td.textContent = '+' + td.textContent;
+                        } else if (val < 0) {
+                            td.classList.add('text-red-600');
+                        }
+                    } else if (colName === 'Spread' || colName.toLowerCase().includes('spread')) {
+                        // Spread column - show with color and sign
                         td.textContent = '$' + val.toFixed(3);
                         if (val > 0) {
                             td.classList.add('text-green-600');

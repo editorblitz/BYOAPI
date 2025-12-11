@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Daily Prices - NGI Chart Lab{% endblock %}
+{% block title %}Spot Prices - NGI Chart Lab{% endblock %}
 
 {% block head %}
     <script src="https://cdn.tailwindcss.com"></script>
@@ -28,8 +28,21 @@
                     <button data-mode="standard" class="mode-tab flex-1 py-2 text-xs font-semibold uppercase text-gray-900 border-b-2 border-gray-900 bg-white">Single</button>
                     <button data-mode="compare" class="mode-tab flex-1 py-2 text-xs font-semibold uppercase text-gray-600 hover:bg-gray-50">Multiple</button>
                     <button data-mode="seasonality" class="mode-tab flex-1 py-2 text-xs font-semibold uppercase text-gray-600 hover:bg-gray-50">Yearly</button>
+                    <button data-mode="spreads" class="mode-tab flex-1 py-2 text-xs font-semibold uppercase text-gray-600 hover:bg-gray-50">Spreads</button>
                 </div>
                 <div class="p-4 flex-1 overflow-y-auto custom-scroll space-y-4">
+                    <!-- Timeframe Quick Selectors -->
+                    <div id="timeframeSection">
+                        <div class="flex gap-1 mb-3">
+                            <button data-timeframe="1M" class="timeframe-btn">1M</button>
+                            <button data-timeframe="2M" class="timeframe-btn">2M</button>
+                            <button data-timeframe="3M" class="timeframe-btn">3M</button>
+                            <button data-timeframe="6M" class="timeframe-btn">6M</button>
+                            <button data-timeframe="1Y" class="timeframe-btn">1Y</button>
+                            <button data-timeframe="5Y" class="timeframe-btn">5Y</button>
+                        </div>
+                    </div>
+
                     <div id="dateSection">
                         <label class="block text-xs font-semibold text-gray-700 uppercase mb-1">Date Range</label>
                         <div class="grid grid-cols-2 gap-2">
@@ -49,13 +62,26 @@
 
                     <hr class="border-gray-200">
 
-                    <div>
+                    <div id="singleLocationSection">
                         <label class="block text-xs font-semibold text-gray-700 uppercase mb-1">Location</label>
                         <select id="regionSelect" class="w-full px-2 py-1 border border-gray-300 text-sm bg-white mb-2"></select>
                         <div class="flex gap-2">
                             <select id="locationSelect" class="w-full px-2 py-1 border border-gray-300 text-sm bg-white"></select>
                             <button id="addToCompareBtn" class="hidden px-2 py-1 bg-gray-200 text-gray-900 text-sm font-semibold hover:bg-gray-300 border border-gray-300">+</button>
                         </div>
+                    </div>
+
+                    <div id="spreadsLocation1Section" class="hidden">
+                        <label class="block text-xs font-semibold text-gray-700 uppercase mb-1">Location 1</label>
+                        <select id="regionSelect1" class="w-full px-2 py-1 border border-gray-300 text-sm bg-white mb-2"></select>
+                        <select id="locationSelect1" class="w-full px-2 py-1 border border-gray-300 text-sm bg-white"></select>
+                    </div>
+
+                    <div id="spreadsLocation2Section" class="hidden">
+                        <hr class="border-gray-200 my-4">
+                        <label class="block text-xs font-semibold text-gray-700 uppercase mb-1">Location 2</label>
+                        <select id="regionSelect2" class="w-full px-2 py-1 border border-gray-300 text-sm bg-white mb-2"></select>
+                        <select id="locationSelect2" class="w-full px-2 py-1 border border-gray-300 text-sm bg-white"></select>
                     </div>
 
                     <div id="compareListSection" class="hidden bg-gray-50 border border-gray-200 p-3 min-h-[100px]">

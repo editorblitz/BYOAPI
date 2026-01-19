@@ -707,6 +707,9 @@ const App = {
             window.addEventListener('resize', () => this.state.chartInstance.resize());
         }
 
+        // Clear the chart completely to prevent series/color persistence
+        this.state.chartInstance.clear();
+
         // Update chart title and subtitle
         this.updateChartHeader(data);
 
@@ -800,15 +803,19 @@ const App = {
             },
             series: data.series.map(s => {
                 const isHidden = s.name && this.state.hiddenSeries.has(s.name);
+                const seriesColor = s.color || s.itemStyle?.color || s.lineStyle?.color;
                 return {
                     ...s,
+                    color: seriesColor,
                     lineStyle: {
                         ...s.lineStyle,
+                        color: seriesColor,
                         width: s.lineStyle?.width || 3,
                         opacity: isHidden ? 0 : (s.lineStyle?.opacity ?? 1)
                     },
                     itemStyle: {
                         ...s.itemStyle,
+                        color: seriesColor,
                         opacity: isHidden ? 0 : (s.itemStyle?.opacity ?? 1)
                     },
                     smooth: false,
@@ -817,7 +824,7 @@ const App = {
             })
         };
 
-        this.state.chartInstance.setOption(option, true);
+        this.state.chartInstance.setOption(option, { notMerge: true, replaceMerge: ['series'] });
     },
 
     toggleYAxisZoom: function(enabled) {
@@ -931,7 +938,7 @@ const App = {
 
             const line = document.createElement('div');
             line.className = 'h-0.5 w-5 transition-opacity';
-            const color = series.itemStyle?.color || series.lineStyle?.color || '#000';
+            const color = series.color || series.itemStyle?.color || series.lineStyle?.color || '#000';
             line.style.backgroundColor = color;
             if (isHidden) {
                 line.style.opacity = '0.3';

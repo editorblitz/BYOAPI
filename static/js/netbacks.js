@@ -1,213 +1,760 @@
 /**
- * Netbacks Chart - ECharts implementation
+ * NGI LNG Netbacks - Frontend Logic
+ * Compares TTF (Europe) and JKM (Asia) netbacks to Henry Hub
  */
 
-(function() {
-    'use strict';
+const NetbacksApp = {
+    state: {
+        mode: 'forward_curve',
+        showSpreads: true,
+        chartInstance: null,
+        hiddenSeries: new Set(),
+        yAxisZoomEnabled: false,
 
-    // Initialize chart
-    const chartDom = document.getElementById('chart');
-    const progressLog = document.getElementById('progressLog');
-    let chart = null;
+        // Forward Curve mode
+        issueDate: '',
 
-    /**
-     * Add a message to the progress log
-     * @param {string} message - The message to log
-     */
-    function addProgressLog(message) {
-        const logEntry = document.createElement('div');
-        logEntry.textContent = message;
-        progressLog.appendChild(logEntry);
-        progressLog.scrollTop = progressLog.scrollHeight;
-    }
+        // Time Series mode
+        contractMonth: '',
+        startDate: '',
+        endDate: ''
+    },
 
-    /**
-     * Clear the progress log
-     */
-    function clearProgressLog() {
-        progressLog.innerHTML = '';
-    }
+    // --- INITIALIZATION ---
+    init: async function() {
+        await this.fetchLatestDateAndSetup();
+        this.setupContractMonths();
+        this.bindEvents();
+        this.setMode(this.state.mode);
+        this.setSystemStatus('ready');
+        this.log('System initialized.');
+    },
 
-    // Set default dates
-    const today = new Date();
-    const thirtyDaysAgo = new Date(today);
-    thirtyDaysAgo.setDate(today.getDate() - 30);
-
-    document.getElementById('end_date').value = today.toISOString().split('T')[0];
-    document.getElementById('start_date').value = thirtyDaysAgo.toISOString().split('T')[0];
-
-    // Set up resize handler once
-    window.addEventListener('resize', function() {
-        if (chart) {
-            chart.resize();
+    log: function(msg) {
+        const time = new Date().toLocaleTimeString();
+        const logHtml = `<div class="border-l-2 border-slate-700 pl-2 mb-1 hover:bg-slate-800"><span class="text-slate-500 mr-2">[${time}]</span>${msg}</div>`;
+        const logContainer = document.getElementById('logContent');
+        if(logContainer) {
+            logContainer.insertAdjacentHTML('beforeend', logHtml);
+            logContainer.scrollTop = logContainer.scrollHeight;
         }
-    });
+        const lastLog = document.getElementById('lastLogMsg');
+        if(lastLog) lastLog.textContent = msg;
+    },
 
-    // Form submission handler
-    document.getElementById('netbacks-form').addEventListener('submit', async function(e) {
-        e.preventDefault();
+    fetchLatestDateAndSetup: async function() {
+        try {
+            this.log('Fetching latest available issue date from API...');
+            const res = await fetch('/api/netback-latest-date');
+            const data = await res.json();
 
-        const startDate = document.getElementById('start_date').value;
-        const endDate = document.getElementById('end_date').value;
-        const origin = document.getElementById('origin').value;
-        const destination = document.getElementById('destination').value;
-        const originName = origin ? document.getElementById('origin').options[document.getElementById('origin').selectedIndex].text : 'All Origins';
-        const destName = destination ? document.getElementById('destination').options[document.getElementById('destination').selectedIndex].text : 'All Destinations';
+            if (data.success && data.latest_issue_date) {
+                this.log(`Latest available issue date: ${data.latest_issue_date}`);
+                this.setupDates(data.latest_issue_date);
+            } else {
+                this.log('Could not fetch latest issue date, using fallback defaults');
+                this.setupDates(null);
+            }
+        } catch (err) {
+            this.log(`Error fetching latest issue date: ${err.message}. Using fallback defaults.`);
+            this.setupDates(null);
+        }
+    },
 
-        // Clear previous log
-        clearProgressLog();
+    setupDates: function(latestIssueDate = null) {
+        let latestIssueDateObj;
 
-        // Show loading state
-        showLoading();
+        if (latestIssueDate) {
+            latestIssueDateObj = new Date(latestIssueDate + 'T00:00:00');
+        } else {
+            latestIssueDateObj = new Date();
+        }
+
+        const twoMonthsAgo = new Date(latestIssueDateObj);
+        twoMonthsAgo.setMonth(latestIssueDateObj.getMonth() - 2);
+
+        // Forward Curve mode - single issue date
+        document.getElementById('issueDate').value = latestIssueDateObj.toISOString().split('T')[0];
+        this.state.issueDate = latestIssueDateObj.toISOString().split('T')[0];
+
+        // Time Series mode - date range
+        document.getElementById('endDate').value = latestIssueDateObj.toISOString().split('T')[0];
+        document.getElementById('startDate').value = twoMonthsAgo.toISOString().split('T')[0];
+        this.state.endDate = latestIssueDateObj.toISOString().split('T')[0];
+        this.state.startDate = twoMonthsAgo.toISOString().split('T')[0];
+    },
+
+    setupContractMonths: function() {
+        const contractSelect = document.getElementById('contractMonthSelect');
+        contractSelect.innerHTML = '';
+
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth();
+
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        // Generate contracts for next 3 years
+        for (let yearOffset = 0; yearOffset < 4; yearOffset++) {
+            const year = currentYear + yearOffset;
+            const startMonth = yearOffset === 0 ? currentMonth : 0;
+
+            for (let month = startMonth; month < 12; month++) {
+                const contractValue = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+                const contractLabel = `${monthNames[month]} ${year}`;
+                const opt = document.createElement('option');
+                opt.value = contractValue;
+                opt.text = contractLabel;
+                contractSelect.appendChild(opt);
+            }
+        }
+
+        // Set default to 6 months out
+        if (contractSelect.options.length > 6) {
+            contractSelect.selectedIndex = 6;
+        }
+
+        this.state.contractMonth = contractSelect.value;
+    },
+
+    bindEvents: function() {
+        // Mode tabs
+        document.querySelectorAll('.mode-tab').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.setMode(e.target.dataset.mode);
+            });
+        });
+
+        // Spreads toggle
+        document.getElementById('showSpreads').addEventListener('change', (e) => {
+            this.state.showSpreads = e.target.checked;
+            this.log(`Show spreads: ${e.target.checked}`);
+        });
+
+        // Forward Curve mode - issue date
+        document.getElementById('issueDate').addEventListener('change', (e) => {
+            this.state.issueDate = e.target.value;
+        });
+
+        // Time Series mode
+        document.getElementById('contractMonthSelect').addEventListener('change', (e) => {
+            this.state.contractMonth = e.target.value;
+        });
+
+        document.getElementById('startDate').addEventListener('change', (e) => {
+            this.state.startDate = e.target.value;
+        });
+
+        document.getElementById('endDate').addEventListener('change', (e) => {
+            this.state.endDate = e.target.value;
+        });
+
+        // Analyze button
+        document.getElementById('analyzeBtn').addEventListener('click', () => this.analyze());
+
+        // Log drawer
+        document.getElementById('logToggle').addEventListener('click', () => this.toggleLogDrawer());
+
+        // Copy table
+        document.getElementById('copyTableBtn').addEventListener('click', () => this.copyTable());
+
+        // Y-Axis Zoom
+        const yZoomToggle = document.getElementById('toggleYZoom');
+        if(yZoomToggle) {
+            yZoomToggle.addEventListener('change', (e) => this.toggleYAxisZoom(e.target.checked));
+        }
+
+        // Window resize
+        window.addEventListener('resize', () => {
+            if(this.state.chartInstance) {
+                this.state.chartInstance.resize();
+            }
+        });
+    },
+
+    setMode: function(mode) {
+        this.state.mode = mode;
+        this.state.hiddenSeries.clear();
+        this.log(`Switched to [${mode.toUpperCase().replace('_', ' ')}] mode.`);
+
+        // Update tabs
+        document.querySelectorAll('.mode-tab').forEach(btn => {
+            if(btn.dataset.mode === mode) {
+                btn.className = 'mode-tab flex-1 py-2 text-xs font-semibold uppercase text-gray-900 border-b-2 border-gray-900 bg-white';
+            } else {
+                btn.className = 'mode-tab flex-1 py-2 text-xs font-semibold uppercase text-gray-600 hover:bg-gray-50';
+            }
+        });
+
+        // Show/hide sections
+        document.getElementById('forwardCurveSection').classList.toggle('hidden', mode !== 'forward_curve');
+        document.getElementById('timeSeriesSection').classList.toggle('hidden', mode !== 'time_series');
+    },
+
+    setSystemStatus: function(state) {
+        const dot = document.getElementById('statusDot');
+        const label = document.getElementById('statusLabel');
+        if(!dot || !label) return;
+
+        const base = 'w-2 h-2 rounded-full';
+
+        switch(state) {
+            case 'working':
+                dot.className = `${base} bg-yellow-500 animate-pulse`;
+                label.textContent = 'Working';
+                break;
+            case 'error':
+                dot.className = `${base} bg-red-500`;
+                label.textContent = 'Attention Needed';
+                break;
+            default:
+                dot.className = `${base} bg-green-500`;
+                label.textContent = 'Ready';
+        }
+    },
+
+    toggleLogDrawer: function() {
+        const drawer = document.getElementById('logDrawer');
+        const arrow = document.getElementById('logArrow');
+        if(drawer.classList.contains('h-0')) {
+            drawer.classList.remove('h-0');
+            drawer.classList.add('h-64');
+            arrow.classList.add('rotate-180');
+        } else {
+            drawer.classList.add('h-0');
+            drawer.classList.remove('h-64');
+            arrow.classList.remove('rotate-180');
+        }
+    },
+
+    openLogDrawer: function() {
+        const drawer = document.getElementById('logDrawer');
+        const arrow = document.getElementById('logArrow');
+        if(drawer && arrow) {
+            drawer.classList.remove('h-0');
+            drawer.classList.add('h-64');
+            arrow.classList.add('rotate-180');
+        }
+    },
+
+    analyze: async function() {
+        const btn = document.getElementById('analyzeBtn');
+        const mode = this.state.mode;
+        const showSpreads = this.state.showSpreads;
+
+        // Validation
+        if (mode === 'forward_curve') {
+            if (!document.getElementById('issueDate').value) {
+                alert('Please select an issue date.');
+                return;
+            }
+        } else if (mode === 'time_series') {
+            if (!document.getElementById('startDate').value || !document.getElementById('endDate').value) {
+                alert('Please select a date range.');
+                return;
+            }
+            if (!document.getElementById('contractMonthSelect').value) {
+                alert('Please select a contract month.');
+                return;
+            }
+        }
+
+        btn.textContent = 'Fetching...';
+        btn.disabled = true;
+        this.setSystemStatus('working');
+
+        this.state.hiddenSeries.clear();
+
+        const params = new URLSearchParams();
+        params.append('mode', mode);
+        params.append('show_spreads', showSpreads);
+
+        if (mode === 'forward_curve') {
+            const issueDate = document.getElementById('issueDate').value;
+            params.append('issue_date', issueDate);
+            this.log(`Fetching forward curves for issue date: ${issueDate}`);
+        } else if (mode === 'time_series') {
+            const contract = document.getElementById('contractMonthSelect').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            params.append('contract', contract);
+            params.append('start_date', startDate);
+            params.append('end_date', endDate);
+
+            // Calculate number of days
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+            this.log(`Fetching time series for ${contract} from ${startDate} to ${endDate} (${days} days)`);
+            this.log(`Note: This will make ${days} API calls - please be patient...`);
+        }
 
         try {
-            addProgressLog('Preparing netbacks analysis request...');
-            addProgressLog(`Date range: ${startDate} to ${endDate}`);
-            addProgressLog(`Origin: ${originName}`);
-            addProgressLog(`Destination: ${destName}`);
+            this.log(`Requesting: /api/netbacks?${params.toString()}`);
+            const res = await fetch(`/api/netbacks?${params.toString()}`);
+            const text = await res.text();
+            let data;
 
-            const params = new URLSearchParams({
-                start_date: startDate,
-                end_date: endDate
-            });
-
-            if (origin) {
-                params.append('origin', origin);
-            }
-            if (destination) {
-                params.append('destination', destination);
+            try {
+                data = JSON.parse(text);
+            } catch(parseErr) {
+                throw new Error('Unexpected response from server. Please refresh your session.');
             }
 
-            addProgressLog('Calling NGI API endpoint: netbacksDatafeed.json');
-            const response = await fetch(`/api/netbacks?${params}`);
-
-            if (!response.ok) {
-                addProgressLog(`NGI API request failed with status ${response.status}`);
-                throw new Error(`API request failed with status ${response.status}`);
+            if(!res.ok) {
+                throw new Error(data.error || `API Error ${res.status}`);
             }
 
-            addProgressLog('Received response from NGI API');
-            const result = await response.json();
+            if(data.error) {
+                throw new Error(data.error);
+            }
 
-            if (result.success) {
-                addProgressLog('Successfully processed netbacks data');
-                if (result.data && result.data.series) {
-                    addProgressLog(`Calculated ${result.data.series.length} netback route(s)`);
+            this.renderChart(data);
+            this.renderTable(data);
+
+            const seriesCount = data.series ? data.series.length : 0;
+            const dateCount = data.dates ? data.dates.length : 0;
+            this.log(`Analysis complete. ${seriesCount} series, ${dateCount} data points.`);
+
+            if (data.metadata) {
+                if (data.metadata.total_dates) {
+                    this.log(`Fetched data for ${data.metadata.total_dates} dates.`);
                 }
-                renderChart(result.data);
-            } else {
-                addProgressLog('Error: ' + (result.error || 'Failed to load data'));
-                showError(result.error || 'Failed to load data');
             }
-        } catch (error) {
-            addProgressLog('Network error: ' + error.message);
-            showError('Network error. Please try again.');
-            console.error('Fetch error:', error);
-        }
-    });
 
-    function showLoading() {
-        if (chart) {
-            chart.showLoading();
-        } else {
-            chartDom.innerHTML = '<div class="chart-loading">Loading data...</div>';
+        } catch(err) {
+            this.log(`Error: ${err.message}`);
+            alert(err.message);
+            this.setSystemStatus('error');
+        } finally {
+            btn.textContent = 'Submit';
+            btn.disabled = false;
+            this.setSystemStatus('ready');
         }
-    }
+    },
 
-    function showError(message) {
-        // Dispose of chart if it exists
-        if (chart) {
-            chart.dispose();
-            chart = null;
+    renderChart: function(data) {
+        const chartDom = document.getElementById('chartContainer');
+        if(!this.state.chartInstance) {
+            this.state.chartInstance = echarts.init(chartDom);
         }
-        chartDom.innerHTML = `<div class="chart-error">${message}</div>`;
-    }
 
-    function renderChart(data) {
-        if (!data || !data.dates || data.dates.length === 0) {
-            showError('No data available for the selected criteria');
+        this.state.chartInstance.clear();
+        this.updateChartHeader(data);
+        this.updateCustomLegend(data);
+
+        if(!data || !data.dates || data.dates.length === 0 || !data.series || data.series.length === 0) {
+            chartDom.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500">No data available for the selected criteria</div>';
             return;
         }
 
-        // Initialize or get existing chart instance
-        if (!chart) {
-            chartDom.innerHTML = '';
-            chart = echarts.init(chartDom);
-        } else {
-            chart.hideLoading();
-        }
-
-        const series = data.series.map(s => ({
-            name: s.name,
-            type: 'line',
-            data: s.data,
-            smooth: false,
-            symbol: 'circle',
-            symbolSize: 6,
-            emphasis: {
-                focus: 'series'
-            }
-        }));
-
         const option = {
-            title: {
-                text: 'LNG Netback Values',
-                left: 'center'
-            },
+            animation: true,
+            backgroundColor: 'transparent',
             tooltip: {
                 trigger: 'axis',
-                axisPointer: {
-                    type: 'cross'
-                },
+                backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                borderColor: 'transparent',
+                textStyle: { color: '#fff', fontSize: 12, fontFamily: 'system-ui, -apple-system, sans-serif' },
                 formatter: function(params) {
-                    let result = `<strong>${params[0].axisValue}</strong><br/>`;
-                    params.forEach(param => {
-                        if (param.value !== null && param.value !== undefined) {
-                            result += `${param.marker} ${param.seriesName}: $${param.value.toFixed(2)}/MMBtu<br/>`;
-                        }
+                    let html = `<div style="font-weight: 600; margin-bottom: 4px;">${params[0].axisValueLabel}</div>`;
+                    params.forEach(p => {
+                        if(!p.seriesName || p.seriesName === '') return;
+                        const val = typeof p.value === 'number' ? `$${p.value.toFixed(3)}` : '-';
+                        html += `<div style="margin: 2px 0;"><span style="color:${p.color}">●</span> ${p.seriesName}: ${val}</div>`;
                     });
-                    return result;
+                    return html;
                 }
             },
             legend: {
-                bottom: 0,
-                data: data.series.map(s => s.name)
+                show: false
             },
-            grid: {
-                left: '3%',
-                right: '4%',
-                bottom: '15%',
-                top: '15%',
-                containLabel: true
-            },
-            xAxis: {
-                type: 'category',
-                data: data.dates,
-                axisLabel: {
-                    rotate: 45
+            dataZoom: this.state.yAxisZoomEnabled ? [
+                {
+                    type: 'slider',
+                    yAxisIndex: 0,
+                    filterMode: 'none',
+                    width: 18,
+                    right: 5,
+                    top: 20,
+                    bottom: 50,
+                    showDetail: false
+                },
+                {
+                    type: 'inside',
+                    yAxisIndex: 0,
+                    filterMode: 'none'
                 }
-            },
-            yAxis: {
-                type: 'value',
-                name: 'Netback ($/MMBtu)',
-                axisLabel: {
-                    formatter: '${value}'
-                }
-            },
-            series: series,
-            dataZoom: [
+            ] : [
                 {
                     type: 'inside',
                     start: 0,
                     end: 100
                 },
                 {
+                    type: 'slider',
                     start: 0,
                     end: 100
                 }
-            ]
+            ],
+            grid: {
+                left: 50,
+                right: this.state.yAxisZoomEnabled ? 130 : 60,
+                bottom: 80,
+                top: 20,
+                containLabel: false
+            },
+            xAxis: {
+                type: 'category',
+                boundaryGap: false,
+                data: data.dates,
+                axisLine: {
+                    lineStyle: { color: '#e6e6e6', width: 1 }
+                },
+                axisTick: { show: false },
+                axisLabel: {
+                    color: '#666',
+                    fontSize: 10,
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    rotate: 45
+                },
+                splitLine: { show: false }
+            },
+            yAxis: {
+                type: 'value',
+                scale: true,
+                position: 'right',
+                axisLine: { show: false },
+                axisTick: { show: false },
+                axisLabel: {
+                    color: '#666',
+                    fontSize: 11,
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    formatter: (v) => `$${v.toFixed(2)}`,
+                    align: 'left',
+                    margin: 10
+                },
+                splitLine: {
+                    lineStyle: { color: '#f0f0f0', width: 1, type: 'solid' }
+                }
+            },
+            series: data.series.map(s => {
+                const isHidden = s.name && this.state.hiddenSeries.has(s.name);
+                const seriesColor = s.color || s.itemStyle?.color || s.lineStyle?.color;
+                return {
+                    ...s,
+                    color: seriesColor,
+                    lineStyle: {
+                        ...s.lineStyle,
+                        color: seriesColor,
+                        width: s.lineStyle?.width || 2,
+                        opacity: isHidden ? 0 : (s.lineStyle?.opacity ?? 1)
+                    },
+                    itemStyle: {
+                        ...s.itemStyle,
+                        color: seriesColor,
+                        opacity: isHidden ? 0 : (s.itemStyle?.opacity ?? 1)
+                    },
+                    smooth: false,
+                    silent: isHidden
+                };
+            })
         };
 
-        chart.setOption(option);
+        this.state.chartInstance.setOption(option, { notMerge: true, replaceMerge: ['series'] });
+    },
+
+    toggleYAxisZoom: function(enabled) {
+        this.state.yAxisZoomEnabled = enabled;
+
+        if (this.state.chartInstance) {
+            const currentOption = this.state.chartInstance.getOption();
+            if (currentOption && currentOption.series && currentOption.series.length > 0) {
+                // Re-render with new zoom settings
+                const newOption = {
+                    dataZoom: enabled ? [
+                        {
+                            type: 'slider',
+                            yAxisIndex: 0,
+                            filterMode: 'none',
+                            width: 18,
+                            right: 5,
+                            top: 20,
+                            bottom: 50,
+                            showDetail: false
+                        },
+                        {
+                            type: 'inside',
+                            yAxisIndex: 0,
+                            filterMode: 'none'
+                        }
+                    ] : [
+                        {
+                            type: 'inside',
+                            start: 0,
+                            end: 100
+                        },
+                        {
+                            type: 'slider',
+                            start: 0,
+                            end: 100
+                        }
+                    ],
+                    grid: {
+                        left: 50,
+                        right: enabled ? 130 : 60,
+                        bottom: 80,
+                        top: 20,
+                        containLabel: false
+                    }
+                };
+
+                this.state.chartInstance.setOption(newOption);
+            }
+        }
+    },
+
+    updateChartHeader: function(data) {
+        const titleEl = document.getElementById('chartTitle');
+        const subtitleEl = document.getElementById('chartSubtitle');
+        const mode = this.state.mode;
+
+        let title = 'LNG Netbacks vs Henry Hub';
+        let subtitle = '';
+
+        if (mode === 'forward_curve' && data.metadata) {
+            title = 'LNG Netback Forward Curves';
+            subtitle = `Issue date: ${data.metadata.issue_date}`;
+        } else if (mode === 'time_series' && data.metadata) {
+            title = `${data.metadata.contract_month} Contract - Netbacks Over Time`;
+            subtitle = `${data.metadata.start_date} to ${data.metadata.end_date}`;
+        }
+
+        if (data.series && data.series.length === 0) {
+            subtitle = 'No netback data available for the selected parameters';
+        }
+
+        titleEl.textContent = title;
+        subtitleEl.textContent = subtitle;
+    },
+
+    updateCustomLegend: function(data) {
+        const legendEl = document.getElementById('customLegend');
+        legendEl.innerHTML = '';
+
+        if (!data.series) return;
+
+        const visibleSeries = data.series.filter(s => s.name && s.name !== '');
+
+        visibleSeries.forEach(series => {
+            const seriesName = series.name;
+            const isHidden = this.state.hiddenSeries.has(seriesName);
+
+            const item = document.createElement('div');
+            item.className = 'flex items-center gap-2 cursor-pointer select-none hover:opacity-75 transition-opacity';
+
+            item.addEventListener('click', () => this.toggleSeriesVisibility(seriesName));
+
+            const line = document.createElement('div');
+            line.className = 'h-0.5 w-5 transition-opacity';
+            const color = series.color || series.itemStyle?.color || series.lineStyle?.color || '#000';
+            line.style.backgroundColor = color;
+
+            // Add dashed style for spread series
+            if (seriesName.includes('Spread')) {
+                line.style.backgroundImage = `repeating-linear-gradient(90deg, ${color} 0px, ${color} 4px, transparent 4px, transparent 8px)`;
+                line.style.backgroundColor = 'transparent';
+            }
+
+            if (isHidden) {
+                line.style.opacity = '0.3';
+            }
+
+            const label = document.createElement('span');
+            label.textContent = seriesName;
+            label.className = 'text-gray-700 transition-opacity';
+            if (isHidden) {
+                label.style.opacity = '0.3';
+                label.style.textDecoration = 'line-through';
+            }
+
+            item.appendChild(line);
+            item.appendChild(label);
+            legendEl.appendChild(item);
+        });
+    },
+
+    toggleSeriesVisibility: function(seriesName) {
+        if (this.state.hiddenSeries.has(seriesName)) {
+            this.state.hiddenSeries.delete(seriesName);
+        } else {
+            this.state.hiddenSeries.add(seriesName);
+        }
+
+        if (this.state.chartInstance) {
+            const option = this.state.chartInstance.getOption();
+            const updatedSeries = option.series.map(s => {
+                if (s.name && s.name !== '') {
+                    return {
+                        ...s,
+                        lineStyle: {
+                            ...s.lineStyle,
+                            opacity: this.state.hiddenSeries.has(s.name) ? 0 : 1
+                        },
+                        itemStyle: {
+                            ...s.itemStyle,
+                            opacity: this.state.hiddenSeries.has(s.name) ? 0 : 1
+                        },
+                        silent: this.state.hiddenSeries.has(s.name)
+                    };
+                }
+                return s;
+            });
+
+            this.state.chartInstance.setOption({
+                series: updatedSeries
+            });
+
+            // Update legend styling
+            const legendEl = document.getElementById('customLegend');
+            const items = legendEl.querySelectorAll('div.flex');
+            items.forEach(item => {
+                const line = item.querySelector('div.h-0\\.5');
+                const label = item.querySelector('span');
+                if (!label) return;
+                const seriesNameFromLabel = label.textContent;
+                const isHidden = this.state.hiddenSeries.has(seriesNameFromLabel);
+
+                if (isHidden) {
+                    if (line) line.style.opacity = '0.3';
+                    label.style.opacity = '0.3';
+                    label.style.textDecoration = 'line-through';
+                } else {
+                    if (line) line.style.opacity = '1';
+                    label.style.opacity = '1';
+                    label.style.textDecoration = 'none';
+                }
+            });
+        }
+    },
+
+    renderTable: function(data) {
+        if(!data || !data.table_columns || !data.table_rows) {
+            return;
+        }
+
+        // Headers
+        const headerRow = document.getElementById('tableHeaderRow');
+        headerRow.innerHTML = '';
+        data.table_columns.forEach(col => {
+            const th = document.createElement('th');
+            th.className = 'px-4 py-2 text-xs font-semibold text-gray-600 bg-gray-100 border-b border-gray-300';
+            th.textContent = col;
+            headerRow.appendChild(th);
+        });
+
+        // Body
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+
+        data.table_rows.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-b border-gray-200 hover:bg-gray-50';
+
+            data.table_columns.forEach((col, idx) => {
+                const td = document.createElement('td');
+                td.className = 'px-4 py-2 text-sm text-gray-700';
+
+                let val;
+                if (idx === 0) {
+                    // First column - date or contract
+                    val = row.contract || row.date;
+                } else if (col === 'TTF Netback') {
+                    val = row.ttf_netback;
+                } else if (col === 'JPN/KOR Netback') {
+                    val = row.jkm_netback;
+                } else if (col === 'Henry Hub') {
+                    val = row.henry_hub;
+                } else if (col === 'TTF-HH Spread') {
+                    val = row.ttf_spread;
+                } else if (col === 'JPN/KOR-HH Spread') {
+                    val = row.jkm_spread;
+                } else {
+                    val = row[col];
+                }
+
+                if (val === null || val === undefined) {
+                    td.textContent = '-';
+                    td.className += ' text-gray-400';
+                } else if (typeof val === 'number') {
+                    td.textContent = '$' + val.toFixed(3);
+                } else {
+                    td.textContent = val;
+                }
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+    },
+
+    copyTable: function() {
+        const table = document.querySelector('.daily-prices-pro-container table');
+        if(!table) {
+            alert('No table data to copy.');
+            return;
+        }
+
+        const lines = [];
+        for(const row of table.rows) {
+            const cols = [];
+            for(const cell of row.cells) {
+                cols.push(cell.innerText.trim());
+            }
+            lines.push(cols.join('\t'));
+        }
+
+        const payload = lines.join('\n');
+        if(!payload) {
+            alert('Nothing to copy.');
+            return;
+        }
+
+        this.copyToClipboard(payload)
+            .then(() => {
+                this.log('Table data copied to clipboard.');
+                alert('Copied table data.');
+            })
+            .catch(err => {
+                this.log(`Copy failed: ${err.message}`);
+                alert('Unable to copy table data.');
+            });
+    },
+
+    copyToClipboard: function(text) {
+        if(navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(text);
+        }
+
+        return new Promise((resolve, reject) => {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+
+            try {
+                document.execCommand('copy');
+                resolve();
+            } catch(err) {
+                reject(err);
+            } finally {
+                document.body.removeChild(textarea);
+            }
+        });
     }
-})();
+};
+
+// Start
+document.addEventListener('DOMContentLoaded', () => NetbacksApp.init());

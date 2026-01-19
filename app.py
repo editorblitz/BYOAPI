@@ -63,16 +63,22 @@ app.register_blueprint(auth_bp)
 from data_routes.lng_flows import lng_flows_bp
 from data_routes.daily_prices import daily_prices_bp
 # from data_routes.spreads import spreads_bp  # DEPRECATED - Spreads now integrated into Daily Prices
-from data_routes.strips import strips_bp
+from data_routes.forward_prices import forward_prices_bp
 from data_routes.netbacks import netbacks_bp
 from data_routes.quick_charts import quick_charts_bp
+from data_routes.spread_dashboard import spread_dashboard_bp
+from data_routes.forward_spread_dashboard import forward_spread_dashboard_bp
+from data_routes.forward_curve_spread_dashboard import forward_curve_spread_dashboard_bp
 
 app.register_blueprint(lng_flows_bp)
 app.register_blueprint(daily_prices_bp)
 # app.register_blueprint(spreads_bp)  # DEPRECATED - Spreads now integrated into Daily Prices
-app.register_blueprint(strips_bp)
+app.register_blueprint(forward_prices_bp)
 app.register_blueprint(netbacks_bp)
 app.register_blueprint(quick_charts_bp)
+app.register_blueprint(spread_dashboard_bp)
+app.register_blueprint(forward_spread_dashboard_bp)
+app.register_blueprint(forward_curve_spread_dashboard_bp)
 
 # ============= MAIN ROUTES =============
 
@@ -103,9 +109,27 @@ def dashboard():
         },
         {
             'name': 'Forward Prices',
-            'description': 'View forward strip pricing data',
-            'url': url_for('strips.strips_page'),
+            'description': 'View and analyze forward price curves, compare locations, and track contract evolution',
+            'url': url_for('forward_prices.forward_prices_page'),
             'icon': 'layer-group'
+        },
+        {
+            'name': 'Spot Spreads Dashboard',
+            'description': 'Monitor multiple price spreads simultaneously with customizable timeframes and quick comparison tools',
+            'url': url_for('spread_dashboard.spread_dashboard_page'),
+            'icon': 'dashboard'
+        },
+        {
+            'name': 'Fixed Forward Spreads Dashboard',
+            'description': 'Track fixed forward price spreads (prompt month) over time with customizable timeframes and location comparisons',
+            'url': url_for('forward_spread_dashboard.forward_spread_dashboard_page'),
+            'icon': 'dashboard'
+        },
+        {
+            'name': 'Forward Curve Spreads Dashboard',
+            'description': 'View forward curve spreads across contract months with adjustable forward horizon (6M, 12M, 24M, 36M)',
+            'url': url_for('forward_curve_spread_dashboard.forward_curve_spread_dashboard_page'),
+            'icon': 'dashboard'
         },
         {
             'name': 'LNG Flows',
@@ -114,15 +138,21 @@ def dashboard():
             'icon': 'ship'
         },
         {
-            'name': 'Netbacks',
-            'description': 'Calculate and visualize netback values',
+            'name': 'LNG Netbacks',
+            'description': 'Compare TTF and JPN/KOR netback prices vs Henry Hub with forward curves and time series analysis',
             'url': url_for('netbacks.netbacks_page'),
             'icon': 'calculator'
         },
         {
-            'name': 'Quick Charts',
-            'description': 'Generate web-ready charts with 1-year lookback',
-            'url': url_for('quick_charts.quick_charts_page'),
+            'name': 'Midday Charts',
+            'description': 'Generate publication-ready midday alert charts for single locations with 1-year lookback',
+            'url': url_for('quick_charts.midday_charts_page'),
+            'icon': 'chart-line'
+        },
+        {
+            'name': 'Daily Price Charts',
+            'description': 'Compare multiple locations on publication-ready daily price charts with 1-year lookback',
+            'url': url_for('quick_charts.daily_price_charts_page'),
             'icon': 'chart-bar'
         }
     ]

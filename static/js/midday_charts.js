@@ -1,27 +1,13 @@
 /**
- * Quick Charts - Publication-ready NGI charts
- * Generates charts at 750x400px, exports as 828x447px WebP
+ * Midday Charts - Publication-ready NGI midday alert charts
+ * Generates single-location charts at 750x400px, exports as 828x447px WebP
  */
 
-const QuickCharts = {
+const MiddayCharts = {
     chart: null,
     currentLocationName: '',
-    chartType: 'midday', // 'midday' or 'daily'
-    compareList: [], // For Daily Prices mode
 
-    // Color palette for multi-line charts (up to 8 colors, easily customizable)
-    colorPalette: [
-        '#002060',  // Dark Blue
-        '#C00000',  // Red
-        '#00B050',  // Green
-        '#7030A0',  // Purple
-        '#FFC000',  // Gold/Yellow
-        '#0070C0',  // Light Blue
-        '#FF6600',  // Orange
-        '#4472C4'   // Steel Blue
-    ],
-
-    // Location data (copied from daily_prices.js for consistency)
+    // Location data
     locations: {
         'Favorites': [
             { name: 'National Avg.', value: 'USAVG' },
@@ -204,8 +190,7 @@ const QuickCharts = {
         this.setupDropdowns();
         this.bindEvents();
         this.setupLogToggle();
-        this.log('Quick Charts system initialized.');
-        this.setChartType('midday');
+        this.log('Midday Charts system initialized.');
     },
 
     log: function(msg) {
@@ -273,114 +258,23 @@ const QuickCharts = {
     },
 
     bindEvents: function() {
-        document.getElementById('chartTypeSelect').addEventListener('change', (e) => this.setChartType(e.target.value));
         document.getElementById('regionSelect').addEventListener('change', () => this.updateLocations());
-        document.getElementById('addToCompareBtn').addEventListener('click', () => {
-            const sel = document.getElementById('locationSelect');
-            if(sel.selectedIndex >= 0) {
-                const opt = sel.options[sel.selectedIndex];
-                const name = opt.textContent;
-                this.addToCompare(opt.value, name);
-            }
-        });
         document.getElementById('generateBtn').addEventListener('click', () => this.handleGenerate());
         document.getElementById('downloadBtn').addEventListener('click', () => this.downloadChart());
     },
 
-    setChartType: function(type) {
-        this.chartType = type;
-        const addBtn = document.getElementById('addToCompareBtn');
-        const compareSection = document.getElementById('compareListSection');
-
-        if (type === 'daily') {
-            addBtn.classList.remove('hidden');
-            compareSection.classList.remove('hidden');
-            this.log('Switched to <strong>Daily Prices</strong> mode (multi-location comparison).');
-        } else {
-            addBtn.classList.add('hidden');
-            compareSection.classList.add('hidden');
-            this.log('Switched to <strong>Midday Alert</strong> mode (single location).');
-        }
-    },
-
-    addToCompare: function(val, name) {
-        if(this.compareList.some(i => i.val === val)) return;
-
-        this.compareList.push({val, name});
-        this.renderCompareList();
-        this.log(`Added <strong>${name}</strong> to comparison list.`);
-    },
-
-    removeFromCompare: function(val) {
-        const item = this.compareList.find(i => i.val === val);
-        this.compareList = this.compareList.filter(i => i.val !== val);
-        this.renderCompareList();
-        if(item) {
-            this.log(`Removed <strong>${item.name}</strong> from comparison list.`);
-        }
-    },
-
-    renderCompareList: function() {
-        const container = document.getElementById('compareListContainer');
-        container.innerHTML = '';
-
-        if(this.compareList.length === 0) {
-            container.innerHTML = '<p class="text-xs text-gray-500 italic">No locations added.</p>';
-            return;
-        }
-
-        this.compareList.forEach(item => {
-            const div = document.createElement('div');
-            div.className = 'flex justify-between items-center bg-white p-2 border border-gray-300 text-sm';
-
-            const label = document.createElement('span');
-            label.className = 'truncate pr-2';
-            label.textContent = item.name;
-
-            const removeBtn = document.createElement('button');
-            removeBtn.className = 'text-gray-500 hover:text-red-600 font-bold px-1';
-            removeBtn.textContent = '×';
-            removeBtn.addEventListener('click', () => this.removeFromCompare(item.val));
-
-            div.appendChild(label);
-            div.appendChild(removeBtn);
-            container.appendChild(div);
-        });
-    },
-
     handleGenerate: async function() {
         try {
-            let data;
+            const location = document.getElementById('locationSelect').value;
+            this.currentLocationName = document.querySelector('#locationSelect option:checked').textContent;
 
-            if (this.chartType === 'midday') {
-                // Midday Alert - single location
-                const location = document.getElementById('locationSelect').value;
-                this.currentLocationName = document.querySelector('#locationSelect option:checked').textContent;
-
-                this.log(`Fetching midday chart for ${this.currentLocationName}...`);
-                const response = await fetch(`/api/quick-charts?type=midday&location=${location}`);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch data: ${response.status}`);
-                }
-                data = await response.json();
-                this.log(`Received ${data.dates.length} data points for midday chart.`);
-            } else {
-                // Daily Prices - multiple locations
-                if (this.compareList.length === 0) {
-                    alert('Please add at least one location to compare.');
-                    return;
-                }
-
-                const locations = this.compareList.map(item => item.val).join(',');
-                this.log(`Fetching daily prices chart for ${this.compareList.length} location(s)...`);
-                const response = await fetch(`/api/quick-charts?type=daily&locations=${locations}`);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch data: ${response.status}`);
-                }
-                data = await response.json();
-                const totalPoints = data.series.reduce((sum, s) => sum + s.dates.length, 0);
-                this.log(`Received ${totalPoints} total data points across ${data.series.length} series.`);
+            this.log(`Fetching midday chart for ${this.currentLocationName}...`);
+            const response = await fetch(`/api/quick-charts?type=midday&location=${location}`);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch data: ${response.status}`);
             }
+            const data = await response.json();
+            this.log(`Received ${data.dates.length} data points for midday chart.`);
 
             this.renderChart(data);
             this.log(`Chart rendered: <strong>750×400px</strong> display (aspect ratio 15:8) • Exports as <strong>828×447px WebP</strong>`);
@@ -405,14 +299,6 @@ const QuickCharts = {
         // Create fresh chart instance
         this.chart = echarts.init(chartDom);
 
-        if (this.chartType === 'midday') {
-            this.renderMiddayChart(data);
-        } else {
-            this.renderDailyPricesChart(data);
-        }
-    },
-
-    renderMiddayChart: function(data) {
         // Limit to last 364 days
         const limitedAverages = data.averages.slice(-364);
         const limitedDates = data.dates.slice(-364);
@@ -608,244 +494,6 @@ const QuickCharts = {
         this.chart.setOption(option);
     },
 
-    renderDailyPricesChart: function(data) {
-        // data.series is an array of { location_name, dates, averages }
-        // Check if we have valid data
-        if (!data || !data.series || data.series.length === 0) {
-            alert('No data available for the selected locations. Please try different locations or check your API credentials.');
-            return;
-        }
-
-        // Limit to last 364 days
-        const limitedSeries = data.series.map(s => ({
-            location_name: s.location_name,
-            dates: s.dates.slice(-364),
-            averages: s.averages.slice(-364)
-        }));
-
-        // Use dates from first series
-        const limitedDates = limitedSeries[0].dates;
-
-        // Calculate Y-axis bounds across all series
-        let allPrices = [];
-        limitedSeries.forEach(s => {
-            const validPrices = s.averages.filter(price => !isNaN(price) && price !== null);
-            allPrices = allPrices.concat(validPrices);
-        });
-
-        const minPrice = Math.min(...allPrices);
-        const maxPrice = Math.max(...allPrices);
-
-        const interval = this.calculateYAxisInterval(minPrice, maxPrice);
-        const adjustedMinPrice = Math.floor(minPrice / interval) * interval;
-        const adjustedMaxPrice = Math.ceil(maxPrice / interval) * interval;
-
-        // Reformat dates to DD-Mon-YYYY
-        const reformattedDates = limitedDates.map(dateStr => {
-            const [year, month, day] = dateStr.split('-');
-            const monthMap = {
-                '01': 'Jan', '02': 'Feb', '03': 'Mar', '04': 'Apr', '05': 'May', '06': 'Jun',
-                '07': 'Jul', '08': 'Aug', '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Dec'
-            };
-            return `${day}-${monthMap[month]}-${year}`;
-        });
-
-        // Build series with colors from palette
-        const series = limitedSeries.map((s, idx) => {
-            const seriesColor = this.colorPalette[idx % this.colorPalette.length];
-            return {
-                name: s.location_name,
-                type: 'line',
-                data: s.averages.map(value => isNaN(value) || value === null ? null : value),
-                color: seriesColor,
-                itemStyle: {
-                    color: seriesColor
-                },
-                lineStyle: {
-                    color: seriesColor,
-                    width: 3
-                },
-                symbol: 'none',
-                connectNulls: false
-            };
-        });
-
-        const option = {
-            color: this.colorPalette,
-            toolbox: {
-                show: false
-            },
-            textStyle: {
-                fontFamily: 'Arial'
-            },
-            title: [{
-                text: "NGI's Daily Natural Gas Prices",
-                left: '3%',
-                top: '10',
-                textStyle: {
-                    color: '#003A50',
-                    fontWeight: 'bold',
-                    fontSize: 24
-                }
-            }],
-            legend: {
-                top: '70',
-                left: 'center',
-                textStyle: {
-                    fontFamily: 'Arial',
-                    fontSize: 12,
-                    color: '#000'
-                },
-                icon: 'rect',
-                itemWidth: 25,
-                itemHeight: 3,
-                data: limitedSeries.map(s => s.location_name)
-            },
-            graphic: [
-                {
-                    type: 'image',
-                    right: 40,
-                    top: 18,
-                    style: {
-                        image: '/static/images/ngi_logo.png',
-                        width: 70,
-                        height: 35
-                    }
-                },
-                {
-                    type: 'group',
-                    left: 'center',
-                    top: 63,
-                    children: [{
-                        type: 'rect',
-                        z: 100,
-                        left: 'center',
-                        top: 'middle',
-                        shape: {
-                            width: 700,
-                            height: 1.4
-                        },
-                        style: {
-                            fill: '#003A50'
-                        }
-                    }]
-                },
-                {
-                    type: 'text',
-                    left: '3.5%',
-                    bottom: '1.6%',
-                    style: {
-                        text: "{bold|Source:} NGI's Daily Gas Price Index",
-                        font: '14px Arial',
-                        rich: {
-                            bold: {
-                                fontWeight: 'bold',
-                                fontSize: 14,
-                                fontFamily: 'Arial'
-                            }
-                        },
-                        fill: '#000'
-                    }
-                }
-            ],
-            tooltip: {
-                trigger: 'axis',
-                axisPointer: {
-                    type: 'cross'
-                }
-            },
-            grid: {
-                left: '7.7%',
-                right: '4%',
-                top: '28%',
-                bottom: '8%',
-                containLabel: true
-            },
-            xAxis: {
-                type: 'category',
-                boundaryGap: false,
-                data: reformattedDates,
-                axisLabel: {
-                    rotate: 45,
-                    interval: (index) => {
-                        const totalDataPoints = limitedDates.length;
-                        const lastIndex = totalDataPoints - 1;
-                        const numIntervals = 12;
-                        const step = lastIndex / numIntervals;
-                        const labelIndices = [];
-                        for (let i = 0; i <= numIntervals; i++) {
-                            labelIndices.push(Math.round(i * step));
-                        }
-                        return labelIndices.includes(index);
-                    },
-                    verticalAlign: 'top',
-                    align: 'right',
-                    fontSize: 13,
-                    fontWeight: 510,
-                    color: 'black'
-                },
-                axisLine: {
-                    lineStyle: {
-                        color: '#D3D3D3'
-                    }
-                },
-                axisTick: {
-                    alignWithLabel: true,
-                    lineStyle: {
-                        color: '#D3D3D3'
-                    }
-                }
-            },
-            yAxis: {
-                type: 'value',
-                name: '$US/MMBtu',
-                nameLocation: 'middle',
-                nameGap: 70,
-                nameTextStyle: {
-                    fontWeight: 750,
-                    fontSize: 12,
-                    color: 'black'
-                },
-                min: adjustedMinPrice,
-                max: adjustedMaxPrice,
-                interval: interval,
-                axisLine: {
-                    show: false
-                },
-                axisLabel: {
-                    formatter: function(value) {
-                        if (value < 0) {
-                            return `{red|$${value.toFixed(3)}}`;
-                        } else {
-                            return `$${value.toFixed(3)}`;
-                        }
-                    },
-                    textStyle: {
-                        fontFamily: 'Arial',
-                        fontSize: 14,
-                        color: 'black'
-                    },
-                    rich: {
-                        red: {
-                            color: 'red',
-                            fontFamily: 'Arial',
-                            fontSize: 13
-                        }
-                    }
-                },
-                splitLine: {
-                    lineStyle: {
-                        color: '#D3D3D3',
-                        width: 1
-                    }
-                }
-            },
-            series: series
-        };
-
-        this.chart.setOption(option);
-    },
-
     calculateYAxisInterval: function(min, max) {
         const range = max - min;
 
@@ -914,14 +562,8 @@ const QuickCharts = {
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
 
-                // Set filename based on chart type
-                let filename;
-                if (this.chartType === 'daily') {
-                    filename = 'NGI Daily Prices.webp';
-                } else {
-                    const sanitizedName = this.currentLocationName.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, ' ').trim();
-                    filename = `${sanitizedName} Midday.webp`;
-                }
+                const sanitizedName = this.currentLocationName.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, ' ').trim();
+                const filename = `${sanitizedName} Midday.webp`;
 
                 link.download = filename;
                 link.href = url;
@@ -939,4 +581,4 @@ const QuickCharts = {
 };
 
 // Initialize on DOM ready
-document.addEventListener('DOMContentLoaded', () => QuickCharts.init());
+document.addEventListener('DOMContentLoaded', () => MiddayCharts.init());

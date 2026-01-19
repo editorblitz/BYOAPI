@@ -3,10 +3,28 @@ LNG Flows data routes.
 Provides API endpoints and page for LNG flow data visualization.
 """
 
+from datetime import datetime, timedelta
 from flask import Blueprint, render_template, request, jsonify
 from auth import require_api_creds, ngi_request
 
 lng_flows_bp = Blueprint('lng_flows', __name__)
+
+# Terminal mapping - maps display names to API location codes
+TERMINAL_MAPPING = {
+    'Corpus Christi': ['corpus_christi'],
+    'Freeport': ['freeport_costal_bend', 'freeport_stratton_ridge', 'freeport_tetco_big_pipeline'],
+    'Golden Pass': ['terminal_sendout'],
+    'Calcasieu Pass': ['venture_global_calcasieu_pass'],
+    'Cameron': ['cameron_cgt', 'cameron_cip'],
+    'Plaquemines': ['gxp_lp_del'],
+    'Sabine Pass': ['sabine_pass_creole', 'sabine_pass_km_la', 'sabine_pass_ngpl', 'sabine_pass_transco'],
+    'Elba Island': ['elba_island_elba_express'],
+    'Cove Point': ['cove_point'],
+    'Altamira FLNG': ['altamira_flng_del']
+}
+
+# Mexican terminals (to exclude for "US Terminals Only")
+MEXICAN_TERMINALS = ['altamira_flng_del']
 
 
 @lng_flows_bp.route('/lng-flows')
@@ -22,86 +40,41 @@ def api_lng_flows():
     """
     API endpoint for LNG flows data.
     Query params:
-        - start_date: Start date (YYYY-MM-DD)
-        - end_date: End date (YYYY-MM-DD)
-        - terminal: Terminal filter (optional)
+        - issue_date: Single issue date (YYYY-MM-DD) - for fetching one day at a time
+
+    Returns the raw location data for the date so it can be filtered client-side.
     """
     try:
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-        terminal = request.args.get('terminal')
+        issue_date = request.args.get('issue_date')
 
-        params = {}
-        if start_date:
-            params['start_date'] = start_date
-        if end_date:
-            params['end_date'] = end_date
-        if terminal:
-            params['terminal'] = terminal
+        if not issue_date:
+            return jsonify({
+                'success': False,
+                'error': 'issue_date parameter is required'
+            }), 400
 
-        # Call NGI API - adjust endpoint path based on actual API spec
-        data = ngi_request('lngFlowsDatafeed.json', params=params)
+        # Fetch data for this single date - returns all terminal/location data
+        try:
+            data = ngi_request('lngFlowDatafeed.json', params={'issue_date': issue_date})
+        except Exception as ngi_error:
+            # Log the actual NGI API error for debugging
+            return jsonify({
+                'success': False,
+                'error': f'NGI API error: {str(ngi_error)}'
+            }), 500
 
-        # Normalize data for chart consumption
-        chart_data = normalize_lng_flows_data(data)
+        # Return the raw location data for client-side processing
+        # Extract the 'data' key if it exists, otherwise return as-is
+        location_data = data.get('data', data) if isinstance(data, dict) else {}
 
         return jsonify({
             'success': True,
-            'data': chart_data
+            'date': issue_date,
+            'locations': location_data
         })
 
     except Exception as e:
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': f'Server error: {str(e)}'
         }), 500
-
-
-def normalize_lng_flows_data(raw_data):
-    """
-    Normalize NGI LNG flows data into a chart-friendly format.
-
-    Returns:
-        {
-            'dates': ['2024-01-01', '2024-01-02', ...],
-            'series': [
-                {'name': 'Terminal A', 'data': [100, 105, ...]},
-                {'name': 'Terminal B', 'data': [200, 195, ...]}
-            ]
-        }
-    """
-    if not raw_data:
-        return {'dates': [], 'series': []}
-
-    # Handle the raw data structure from NGI API
-    # Adjust this based on actual API response format
-    if isinstance(raw_data, list):
-        # Group by terminal/location
-        terminals = {}
-        dates = set()
-
-        for record in raw_data:
-            date = record.get('date') or record.get('issue_date')
-            terminal = record.get('terminal') or record.get('location') or 'Unknown'
-            value = record.get('flow') or record.get('value') or record.get('volume') or 0
-
-            dates.add(date)
-            if terminal not in terminals:
-                terminals[terminal] = {}
-            terminals[terminal][date] = value
-
-        sorted_dates = sorted(list(dates))
-
-        series = []
-        for terminal, values in terminals.items():
-            series.append({
-                'name': terminal,
-                'data': [values.get(d, 0) for d in sorted_dates]
-            })
-
-        return {
-            'dates': sorted_dates,
-            'series': series
-        }
-
-    return {'dates': [], 'series': []}

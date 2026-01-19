@@ -14,8 +14,22 @@ quick_charts_bp = Blueprint('quick_charts', __name__)
 @quick_charts_bp.route('/quick-charts')
 @require_api_creds
 def quick_charts_page():
-    """Render the Quick Charts page."""
+    """Render the Quick Charts page (deprecated - redirects to Midday Charts)."""
     return render_template('quick_charts.html')
+
+
+@quick_charts_bp.route('/midday-charts')
+@require_api_creds
+def midday_charts_page():
+    """Render the Midday Charts page."""
+    return render_template('midday_charts.html')
+
+
+@quick_charts_bp.route('/daily-price-charts')
+@require_api_creds
+def daily_price_charts_page():
+    """Render the Daily Price Charts page."""
+    return render_template('daily_price_charts.html')
 
 
 @quick_charts_bp.route('/api/quick-charts')

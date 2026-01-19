@@ -361,8 +361,9 @@ def process_standard_view(records):
             'name': 'Average',
             'type': 'line',
             'data': averages,
+            'color': '#2563eb',
             'itemStyle': {'color': '#2563eb'},
-            'lineStyle': {'width': 3},
+            'lineStyle': {'width': 3, 'color': '#2563eb'},
             'symbol': 'none',
             'showSymbol': False
         },
@@ -370,8 +371,9 @@ def process_standard_view(records):
             'name': 'High',
             'type': 'line',
             'data': highs,
+            'color': '#22c55e',
             'itemStyle': {'color': '#22c55e'},
-            'lineStyle': {'width': 1, 'type': 'dashed'},
+            'lineStyle': {'width': 1, 'type': 'dashed', 'color': '#22c55e'},
             'symbol': 'none',
             'showSymbol': False
         },
@@ -379,8 +381,9 @@ def process_standard_view(records):
             'name': 'Low',
             'type': 'line',
             'data': lows,
+            'color': '#f59e0b',
             'itemStyle': {'color': '#f59e0b'},
-            'lineStyle': {'width': 1, 'type': 'dashed'},
+            'lineStyle': {'width': 1, 'type': 'dashed', 'color': '#f59e0b'},
             'symbol': 'none',
             'showSymbol': False
         }
@@ -487,8 +490,9 @@ def process_seasonality_view(current_records, previous_records, year, historical
         'name': str(year),
         'type': 'line',
         'data': current_values,
+        'color': '#2563eb',
         'itemStyle': {'color': '#2563eb'},
-        'lineStyle': {'width': 3},
+        'lineStyle': {'width': 3, 'color': '#2563eb'},
         'symbol': 'none',
         'showSymbol': False,
         'z': 10
@@ -497,8 +501,9 @@ def process_seasonality_view(current_records, previous_records, year, historical
         'name': str(prev_year),
         'type': 'line',
         'data': previous_values,
+        'color': '#9ca3af',
         'itemStyle': {'color': '#9ca3af'},
-        'lineStyle': {'width': 2, 'type': 'dashed'},
+        'lineStyle': {'width': 2, 'type': 'dashed', 'color': '#9ca3af'},
         'symbol': 'none',
         'showSymbol': False,
         'z': 10
@@ -568,8 +573,9 @@ def process_comparison_view(datasets):
             'name': label,
             'type': 'line',
             'data': [date_map[date].get(label) for date in sorted_dates],
+            'color': color,
             'itemStyle': {'color': color},
-            'lineStyle': {'width': 2},
+            'lineStyle': {'width': 2, 'color': color},
             'symbol': 'none',
             'showSymbol': False,
             'connectNulls': True
@@ -725,8 +731,9 @@ def process_spreads_view(records1, records2, location1_code, location2_code):
         'name': f'{location1_code} - {location2_code}',
         'type': 'line',
         'data': spreads,
+        'color': '#2563eb',
         'itemStyle': {'color': '#2563eb'},
-        'lineStyle': {'width': 3},
+        'lineStyle': {'width': 3, 'color': '#2563eb'},
         'symbol': 'none',
         'showSymbol': False
     }]

@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screenshot Cropper - 520×280</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        .info {
+            text-align: center;
+            color: #888;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .drop-zone {
+            border: 2px dashed #444;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 20px;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: #6366f1;
+            background: rgba(99, 102, 241, 0.1);
+        }
+        .drop-zone input { display: none; }
+
+        .workspace {
+            display: none;
+            gap: 20px;
+        }
+        .workspace.active { display: block; }
+
+        .canvas-container {
+            position: relative;
+            background: #111;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        #sourceCanvas {
+            display: block;
+            max-width: 100%;
+            cursor: crosshair;
+        }
+        .crop-overlay {
+            position: absolute;
+            border: 2px solid #6366f1;
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.6);
+            cursor: move;
+            pointer-events: none;
+        }
+        .crop-overlay::after {
+            content: '520 × 280';
+            position: absolute;
+            bottom: -24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #6366f1;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #6366f1;
+            color: white;
+        }
+        .btn-primary:hover { background: #4f46e5; }
+        .btn-secondary {
+            background: #333;
+            color: #eee;
+        }
+        .btn-secondary:hover { background: #444; }
+
+        .filename-input {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .filename-input label {
+            color: #888;
+            font-size: 14px;
+        }
+        .filename-input input {
+            flex: 1;
+            max-width: 300px;
+            padding: 8px 12px;
+            border: 1px solid #333;
+            border-radius: 6px;
+            background: #222;
+            color: #eee;
+            font-size: 14px;
+        }
+        .filename-input span {
+            color: #666;
+        }
+
+        .preview-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #333;
+        }
+        .preview-section h3 {
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: #888;
+        }
+        #previewCanvas {
+            border-radius: 6px;
+            background: #111;
+        }
+
+        .help {
+            margin-top: 20px;
+            padding: 15px;
+            background: #222;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #888;
+        }
+        .help strong { color: #aaa; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Screenshot Cropper</h1>
+        <p class="info">Crop images to 520×280 (aspect ratio 1.86:1) for dashboard cards</p>
+
+        <div class="drop-zone" id="dropZone">
+            <p>Drop an image here or click to select</p>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+
+        <div class="workspace" id="workspace">
+            <div class="controls">
+                <button class="btn-secondary" id="newImageBtn">New Image</button>
+                <button class="btn-secondary" id="centerBtn">Center Crop</button>
+                <button class="btn-secondary" id="fitWidthBtn">Fit Width</button>
+                <button class="btn-secondary" id="fitHeightBtn">Fit Height</button>
+            </div>
+
+            <div class="canvas-container" id="canvasContainer">
+                <canvas id="sourceCanvas"></canvas>
+                <div class="crop-overlay" id="cropOverlay"></div>
+            </div>
+
+            <div class="filename-input">
+                <label>Filename:</label>
+                <input type="text" id="filename" value="screenshot" placeholder="filename">
+                <span>.png</span>
+            </div>
+
+            <button class="btn-primary" id="downloadBtn">Download Cropped Image</button>
+
+            <div class="preview-section">
+                <h3>Preview (actual size: 520×280)</h3>
+                <canvas id="previewCanvas" width="520" height="280"></canvas>
+            </div>
+
+            <div class="help">
+                <strong>How to use:</strong> Click and drag on the image to position the crop area.
+                Use the buttons to quickly center or fit the crop. The preview shows exactly what will be saved.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CROP_WIDTH = 520;
+        const CROP_HEIGHT = 280;
+        const ASPECT_RATIO = CROP_WIDTH / CROP_HEIGHT;
+
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const workspace = document.getElementById('workspace');
+        const sourceCanvas = document.getElementById('sourceCanvas');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const cropOverlay = document.getElementById('cropOverlay');
+        const canvasContainer = document.getElementById('canvasContainer');
+
+        const sourceCtx = sourceCanvas.getContext('2d');
+        const previewCtx = previewCanvas.getContext('2d');
+
+        let img = null;
+        let scale = 1;
+        let cropX = 0;
+        let cropY = 0;
+        let cropW = CROP_WIDTH;
+        let cropH = CROP_HEIGHT;
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+
+        // File handling
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) loadImage(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) loadImage(e.target.files[0]);
+        });
+
+        function loadImage(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                img = new Image();
+                img.onload = () => {
+                    setupCanvas();
+                    dropZone.style.display = 'none';
+                    workspace.classList.add('active');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+
+            // Set default filename from file
+            const name = file.name.replace(/\.[^/.]+$/, '');
+            document.getElementById('filename').value = name;
+        }
+
+        function setupCanvas() {
+            // Scale image to fit container (max 960px wide)
+            const maxWidth = 960;
+            scale = Math.min(1, maxWidth / img.width);
+
+            sourceCanvas.width = img.width * scale;
+            sourceCanvas.height = img.height * scale;
+
+            sourceCtx.drawImage(img, 0, 0, sourceCanvas.width, sourceCanvas.height);
+
+            // Calculate initial crop size to fit
+            const scaleToFit = Math.min(
+                sourceCanvas.width / CROP_WIDTH,
+                sourceCanvas.height / CROP_HEIGHT
+            );
+            cropW = CROP_WIDTH * Math.min(scaleToFit, 1);
+            cropH = CROP_HEIGHT * Math.min(scaleToFit, 1);
+
+            // Center crop
+            centerCrop();
+        }
+
+        function centerCrop() {
+            cropX = (sourceCanvas.width - cropW) / 2;
+            cropY = (sourceCanvas.height - cropH) / 2;
+            updateCropOverlay();
+            updatePreview();
+        }
+
+        function fitWidth() {
+            cropW = sourceCanvas.width;
+            cropH = cropW / ASPECT_RATIO;
+            if (cropH > sourceCanvas.height) {
+                cropH = sourceCanvas.height;
+                cropW = cropH * ASPECT_RATIO;
+            }
+            centerCrop();
+        }
+
+        function fitHeight() {
+            cropH = sourceCanvas.height;
+            cropW = cropH * ASPECT_RATIO;
+            if (cropW > sourceCanvas.width) {
+                cropW = sourceCanvas.width;
+                cropH = cropW / ASPECT_RATIO;
+            }
+            centerCrop();
+        }
+
+        function updateCropOverlay() {
+            cropOverlay.style.left = cropX + 'px';
+            cropOverlay.style.top = cropY + 'px';
+            cropOverlay.style.width = cropW + 'px';
+            cropOverlay.style.height = cropH + 'px';
+        }
+
+        function updatePreview() {
+            previewCtx.clearRect(0, 0, CROP_WIDTH, CROP_HEIGHT);
+
+            // Calculate source coordinates (accounting for display scale)
+            const srcX = cropX / scale;
+            const srcY = cropY / scale;
+            const srcW = cropW / scale;
+            const srcH = cropH / scale;
+
+            previewCtx.drawImage(
+                img,
+                srcX, srcY, srcW, srcH,
+                0, 0, CROP_WIDTH, CROP_HEIGHT
+            );
+        }
+
+        // Drag handling
+        sourceCanvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            const rect = sourceCanvas.getBoundingClientRect();
+            dragStartX = e.clientX - rect.left - cropX;
+            dragStartY = e.clientY - rect.top - cropY;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+
+            const rect = sourceCanvas.getBoundingClientRect();
+            let newX = e.clientX - rect.left - dragStartX;
+            let newY = e.clientY - rect.top - dragStartY;
+
+            // Constrain to canvas
+            newX = Math.max(0, Math.min(newX, sourceCanvas.width - cropW));
+            newY = Math.max(0, Math.min(newY, sourceCanvas.height - cropH));
+
+            cropX = newX;
+            cropY = newY;
+
+            updateCropOverlay();
+            updatePreview();
+        });
+
+        document.addEventListener('mouseup', () => isDragging = false);
+
+        // Mouse wheel to resize crop
+        sourceCanvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+
+            const delta = e.deltaY > 0 ? 0.95 : 1.05;
+            let newW = cropW * delta;
+            let newH = newW / ASPECT_RATIO;
+
+            // Constrain to canvas and minimum size
+            const minSize = 100;
+            if (newW < minSize || newH < minSize) return;
+            if (newW > sourceCanvas.width || newH > sourceCanvas.height) return;
+
+            // Resize from center
+            const centerX = cropX + cropW / 2;
+            const centerY = cropY + cropH / 2;
+
+            cropW = newW;
+            cropH = newH;
+            cropX = centerX - cropW / 2;
+            cropY = centerY - cropH / 2;
+
+            // Constrain position
+            cropX = Math.max(0, Math.min(cropX, sourceCanvas.width - cropW));
+            cropY = Math.max(0, Math.min(cropY, sourceCanvas.height - cropH));
+
+            updateCropOverlay();
+            updatePreview();
+        });
+
+        // Buttons
+        document.getElementById('newImageBtn').addEventListener('click', () => {
+            workspace.classList.remove('active');
+            dropZone.style.display = 'block';
+            fileInput.value = '';
+        });
+
+        document.getElementById('centerBtn').addEventListener('click', centerCrop);
+        document.getElementById('fitWidthBtn').addEventListener('click', fitWidth);
+        document.getElementById('fitHeightBtn').addEventListener('click', fitHeight);
+
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            const filename = document.getElementById('filename').value || 'screenshot';
+
+            // Create download link
+            const link = document.createElement('a');
+            link.download = filename + '.png';
+            link.href = previewCanvas.toDataURL('image/png');
+            link.click();
+        });
+    </script>
+</body>
+</html>

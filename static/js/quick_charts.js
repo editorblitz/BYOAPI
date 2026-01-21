@@ -26,7 +26,14 @@ const QuickCharts = {
         'Favorites': [
             { name: 'National Avg.', value: 'USAVG' },
             { name: 'Henry Hub', value: 'SLAHH' },
-            { name: 'Waha', value: 'WTXWAHA' }
+            { name: 'Waha', value: 'WTXWAHA' },
+            { name: 'Houston Ship Channel', value: 'ETXHSHIP' },
+            { name: 'Katy', value: 'ETXKATY' },
+            { name: 'Chicago Citygate', value: 'MCWCCITY' },
+            { name: 'Algonquin Citygate', value: 'NEAALGCG' },
+            { name: 'Cheyenne Hub', value: 'RMTCHEY' },
+            { name: 'SoCal Citygate', value: 'CALSCG' },
+            { name: 'NOVA/AECO C', value: 'CDNNOVA' }
         ],
         'South Texas': [
             { name: 'Agua Dulce', value: 'STXAGUAD' },

@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Midday Charts - Multi - NGI Data Tools{% endblock %}
+
+{% block head %}
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' }
+                    }
+                }
+            }
+        };
+    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/daily_prices_pro.css') }}">
+    <style>
+        body {
+            background: #f8fafc;
+            padding-bottom: 2rem;
+        }
+        .main-content {
+            padding: 0;
+            max-width: 100%;
+        }
+        .footer {
+            display: none;
+        }
+        #chart {
+            width: 750px;
+            height: 400px;
+            margin: 0 auto;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="daily-prices-pro-container bg-white text-gray-900 min-h-[70vh]">
+    <div class="py-4">
+        <div class="flex gap-4">
+            <!-- Sidebar -->
+            <aside class="w-80 flex-shrink-0 bg-white border border-gray-300 flex flex-col max-h-[calc(100vh-10rem)] overflow-hidden ml-4">
+                <div class="p-4 flex-1 overflow-y-auto custom-scroll space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 uppercase mb-1">Region</label>
+                        <select id="regionSelect" class="w-full px-2 py-1 border border-gray-300 text-sm bg-white mb-2"></select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 uppercase mb-1">Location</label>
+                        <div class="flex gap-2">
+                            <select id="locationSelect" class="w-full px-2 py-1 border border-gray-300 text-sm bg-white"></select>
+                            <button id="addToCompareBtn" class="px-2 py-1 bg-gray-200 text-gray-900 text-sm font-semibold hover:bg-gray-300 border border-gray-300">+</button>
+                        </div>
+                    </div>
+
+                    <div id="compareListSection" class="bg-gray-50 border border-gray-200 p-3 min-h-[100px]">
+                        <label class="block text-xs font-semibold text-gray-700 uppercase mb-2">Selected Locations</label>
+                        <div id="compareListContainer" class="space-y-2">
+                            <p class="text-xs text-gray-500 italic" id="emptyCompareMsg">No locations added.</p>
+                        </div>
+                    </div>
+
+                    <hr class="border-gray-200">
+
+                    <button id="generateBtn" class="w-full bg-gray-900 text-white px-4 py-2 text-sm font-semibold hover:bg-gray-800 transition-colors">
+                        Generate Chart
+                    </button>
+                </div>
+
+                <!-- Download button at bottom -->
+                <div class="p-4 border-t border-gray-200">
+                    <button id="downloadBtn" class="w-full bg-green-600 text-white px-4 py-2 text-sm font-semibold hover:bg-green-700 transition-colors hidden">
+                        Download WebP
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Main Chart Area -->
+            <main class="flex-1 mr-4">
+                <div class="bg-white border border-gray-300 p-4">
+                    <div id="chart"></div>
+                </div>
+                <!-- Date Range (below chart, right-aligned) -->
+                <div id="dateRangeSection" class="hidden flex justify-end mt-2">
+                    <div class="flex items-center gap-2 text-xs text-gray-500">
+                        <span>Date range:</span>
+                        <input type="date" id="startDate" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white">
+                        <span>to</span>
+                        <input type="date" id="endDate" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white">
+                        <button id="updateChartBtn" class="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs hover:bg-gray-300 border border-gray-300">
+                            Update
+                        </button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+</div>
+
+<div class="daily-prices-log fixed bottom-0 left-0 right-0 z-40">
+    <div id="logDrawer" class="bg-gray-900 border-t border-gray-700 transition-all duration-300 ease-in-out h-0 overflow-hidden">
+        <div id="logContent" class="h-64 p-4 font-mono text-xs overflow-y-auto custom-scroll text-gray-300"></div>
+    </div>
+    <button id="logToggle" class="w-full bg-gray-800 border-t border-gray-700 h-8 flex items-center justify-between px-4 text-xs font-medium text-gray-300 hover:text-white hover:bg-gray-700">
+        <div class="flex items-center gap-3">
+            <div id="statusDot" class="w-2 h-2 bg-green-500"></div>
+            <span id="statusLabel" class="uppercase tracking-wider font-semibold">Ready</span>
+            <span class="w-px h-3 bg-gray-600 mx-1"></span>
+            <span id="lastLogMsg" class="font-mono truncate max-w-md text-gray-400">System ready</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <svg id="logArrow" class="transition-transform duration-300" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
+        </div>
+    </button>
+</div>
+
+<script src="{{ url_for('static', filename='js/midday_charts_multi.js') }}"></script>
+{% endblock %}

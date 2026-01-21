@@ -1,4 +1,4 @@
-# NGI Chart Lab - UI/UX Review
+# NGI Data Tools - UI/UX Review
 
 **Review Date:** December 12, 2025
 **Reviewer:** Claude (AI Assistant)
@@ -7,7 +7,7 @@
 
 ## Overall Rating: 7.5/10
 
-The NGI Chart Lab application demonstrates solid fundamentals with a clean, professional aesthetic and good security practices. The core charting functionality is well-implemented with ECharts, and the newer pages (Spot Prices, Forward Prices, Quick Charts) showcase a polished, modern design. However, there are notable inconsistencies between old and new page layouts that should be addressed for a cohesive user experience.
+The NGI Data Tools application demonstrates solid fundamentals with a clean, professional aesthetic and good security practices. The core charting functionality is well-implemented with ECharts, and the newer pages (Spot Prices, Forward Prices, Quick Charts) showcase a polished, modern design. However, there are notable inconsistencies between old and new page layouts that should be addressed for a cohesive user experience.
 
 ---
 
@@ -237,6 +237,6 @@ The NGI Chart Lab application demonstrates solid fundamentals with a clean, prof
 
 ## Summary
 
-The NGI Chart Lab has a solid foundation with excellent charting capabilities and thoughtful UX features like drag-and-drop reordering and intelligent date defaults. The primary issue is the visual and structural inconsistency between older and newer pages. A focused effort to migrate the remaining pages to the new layout pattern and consolidate the CSS approach would significantly improve the overall experience.
+The NGI Data Tools has a solid foundation with excellent charting capabilities and thoughtful UX features like drag-and-drop reordering and intelligent date defaults. The primary issue is the visual and structural inconsistency between older and newer pages. A focused effort to migrate the remaining pages to the new layout pattern and consolidate the CSS approach would significantly improve the overall experience.
 
 The application is functional and professional-looking, but addressing the high-priority items above would elevate it from "good" to "polished."

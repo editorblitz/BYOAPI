@@ -9,14 +9,14 @@ const DailyPriceCharts = {
 
     // Color palette for multi-line charts (up to 8 colors)
     colorPalette: [
-        '#002060',  // Dark Blue
-        '#C00000',  // Red
-        '#00B050',  // Green
-        '#7030A0',  // Purple
-        '#FFC000',  // Gold/Yellow
-        '#0070C0',  // Light Blue
-        '#FF6600',  // Orange
-        '#4472C4'   // Steel Blue
+        '#1d4063',  // Dark Navy Blue
+        '#37b4ee',  // Sky Blue
+        '#fabc28',  // Gold/Amber
+        '#dc3545',  // Red
+        '#28a745',  // Green
+        '#6f42c1',  // Purple
+        '#fd7e14',  // Orange
+        '#20c997'   // Teal
     ],
 
     // Location data
@@ -24,7 +24,14 @@ const DailyPriceCharts = {
         'Favorites': [
             { name: 'National Avg.', value: 'USAVG' },
             { name: 'Henry Hub', value: 'SLAHH' },
-            { name: 'Waha', value: 'WTXWAHA' }
+            { name: 'Waha', value: 'WTXWAHA' },
+            { name: 'Houston Ship Channel', value: 'ETXHSHIP' },
+            { name: 'Katy', value: 'ETXKATY' },
+            { name: 'Chicago Citygate', value: 'MCWCCITY' },
+            { name: 'Algonquin Citygate', value: 'NEAALGCG' },
+            { name: 'Cheyenne Hub', value: 'RMTCHEY' },
+            { name: 'SoCal Citygate', value: 'CALSCG' },
+            { name: 'NOVA/AECO C', value: 'CDNNOVA' }
         ],
         'South Texas': [
             { name: 'Agua Dulce', value: 'STXAGUAD' },
@@ -202,7 +209,7 @@ const DailyPriceCharts = {
         this.setupDropdowns();
         this.bindEvents();
         this.setupLogToggle();
-        this.log('Daily Price Charts system initialized.');
+        this.log('Daily Spot Charts - Multi system initialized.');
     },
 
     log: function(msg) {
@@ -281,6 +288,7 @@ const DailyPriceCharts = {
         });
         document.getElementById('generateBtn').addEventListener('click', () => this.handleGenerate());
         document.getElementById('downloadBtn').addEventListener('click', () => this.downloadChart());
+        document.getElementById('updateChartBtn').addEventListener('click', () => this.handleGenerate());
     },
 
     addToCompare: function(val, name) {
@@ -335,9 +343,27 @@ const DailyPriceCharts = {
                 return;
             }
 
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            // Validate dates only if both are provided (for updates)
+            if (startDate && endDate && startDate > endDate) {
+                alert('Start date must be before end date.');
+                return;
+            }
+
             const locations = this.compareList.map(item => item.val).join(',');
-            this.log(`Fetching daily prices chart for ${this.compareList.length} location(s)...`);
-            const response = await fetch(`/api/quick-charts?type=daily&locations=${locations}`);
+
+            // Build URL with optional date params
+            let url = `/api/quick-charts?type=daily&locations=${locations}`;
+            if (startDate && endDate) {
+                url += `&start_date=${startDate}&end_date=${endDate}`;
+                this.log(`Fetching daily prices for ${this.compareList.length} location(s) from ${startDate} to ${endDate}...`);
+            } else {
+                this.log(`Fetching daily prices for ${this.compareList.length} location(s) (last 12 months)...`);
+            }
+
+            const response = await fetch(url);
             if (!response.ok) {
                 throw new Error(`Failed to fetch data: ${response.status}`);
             }
@@ -348,8 +374,16 @@ const DailyPriceCharts = {
             this.renderChart(data);
             this.log(`Chart rendered: <strong>750×400px</strong> display (aspect ratio 15:8) • Exports as <strong>828×447px WebP</strong>`);
 
-            // Show download button
+            // Show download button and date range section
             document.getElementById('downloadBtn').classList.remove('hidden');
+            document.getElementById('dateRangeSection').classList.remove('hidden');
+
+            // Update date inputs to show actual data range
+            if (data.series && data.series.length > 0 && data.series[0].dates.length > 0) {
+                const dates = data.series[0].dates;
+                document.getElementById('startDate').value = dates[0];
+                document.getElementById('endDate').value = dates[dates.length - 1];
+            }
         } catch (error) {
             console.error('Error fetching chart data:', error);
             this.log(`<span class="text-red-400">Error: ${error.message}</span>`);
@@ -374,11 +408,11 @@ const DailyPriceCharts = {
             return;
         }
 
-        // Limit to last 364 days
+        // Use the data as-is (API returns the requested date range)
         const limitedSeries = data.series.map(s => ({
             location_name: s.location_name,
-            dates: s.dates.slice(-364),
-            averages: s.averages.slice(-364)
+            dates: s.dates,
+            averages: s.averages
         }));
 
         // Use dates from first series
@@ -533,6 +567,10 @@ const DailyPriceCharts = {
                         const labelIndices = [];
                         for (let i = 0; i <= numIntervals; i++) {
                             labelIndices.push(Math.round(i * step));
+                        }
+                        // Always include the last index to show the latest date
+                        if (!labelIndices.includes(lastIndex)) {
+                            labelIndices.push(lastIndex);
                         }
                         return labelIndices.includes(index);
                     },

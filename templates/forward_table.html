@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}Forward Table - NGI Data Tools{% endblock %}
+
+{% block head %}
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' }
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        .forward-table-container {
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .custom-scroll::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+        .data-table th {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background-color: #f3f4f6;
+        }
+        .data-table th:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 30;
+            background-color: #e5e7eb;
+        }
+        .data-table td:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 10;
+            background-color: #f9fafb;
+            font-weight: 600;
+        }
+        .data-table tr:hover td {
+            background-color: #f3f4f6;
+        }
+        .data-table tr:hover td:first-child {
+            background-color: #e5e7eb;
+        }
+        .toast {
+            position: fixed;
+            bottom: 60px;
+            right: 20px;
+            padding: 12px 24px;
+            background-color: #1f2937;
+            color: white;
+            border-radius: 6px;
+            font-size: 14px;
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.2s, transform 0.2s;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="forward-table-container bg-white text-gray-900 min-h-[70vh]">
+    <div class="p-4">
+        <!-- Header and Controls -->
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">Forward Table</h1>
+                <p class="text-sm text-gray-600">View forward curves for all locations on a single trade date</p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-4">
+                <!-- Issue Date -->
+                <div class="flex items-center gap-2">
+                    <label for="issueDate" class="text-sm font-medium text-gray-700">Issue Date:</label>
+                    <input type="date" id="issueDate" class="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent">
+                </div>
+
+                <!-- Price Type -->
+                <div class="flex items-center gap-3">
+                    <label class="flex items-center gap-1.5 cursor-pointer">
+                        <input type="radio" name="priceType" value="fixed" checked class="w-4 h-4 text-gray-900">
+                        <span class="text-sm">Fixed</span>
+                    </label>
+                    <label class="flex items-center gap-1.5 cursor-pointer">
+                        <input type="radio" name="priceType" value="basis" class="w-4 h-4 text-gray-900">
+                        <span class="text-sm">Basis</span>
+                    </label>
+                </div>
+
+                <!-- Load Button -->
+                <button id="loadDataBtn" class="px-4 py-1.5 bg-gray-900 text-white text-sm font-semibold rounded hover:bg-gray-800 transition-colors">
+                    Load Data
+                </button>
+            </div>
+        </div>
+
+        <!-- Metadata Display -->
+        <div id="metadataDisplay" class="hidden mb-4 p-3 bg-gray-50 border border-gray-200 rounded">
+            <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+                <div><span class="font-medium text-gray-600">Trade Date:</span> <span id="tradeDate" class="text-gray-900">-</span></div>
+                <div><span class="font-medium text-gray-600">Issue Date:</span> <span id="displayIssueDate" class="text-gray-900">-</span></div>
+                <div><span class="font-medium text-gray-600">Price Type:</span> <span id="priceTypeDisplay" class="text-gray-900">-</span></div>
+                <div><span class="font-medium text-gray-600">Locations:</span> <span id="locationCount" class="text-gray-900">-</span></div>
+                <div><span class="font-medium text-gray-600">Contract Range:</span> <span id="contractRange" class="text-gray-900">-</span></div>
+            </div>
+        </div>
+
+        <!-- Utility Buttons -->
+        <div id="utilityButtons" class="hidden mb-3 flex gap-2">
+            <button id="copyTableBtn" class="px-3 py-1.5 bg-gray-200 text-gray-800 text-sm font-medium rounded hover:bg-gray-300 transition-colors">
+                Copy Entire Table
+            </button>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingMessage" class="hidden text-center py-12">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-3"></div>
+            <p class="text-gray-600">Loading forward curve data...</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorMessage" class="hidden text-center py-12">
+            <p class="text-red-600 font-medium" id="errorText">An error occurred</p>
+        </div>
+
+        <!-- Table Container -->
+        <div id="tableContainer" class="hidden border border-gray-300 rounded overflow-hidden">
+            <div class="overflow-auto custom-scroll" style="max-height: calc(100vh - 320px);">
+                <table id="dataTable" class="data-table w-full text-sm border-collapse">
+                    <thead id="tableHeader">
+                        <!-- Header row will be generated dynamically -->
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Data rows will be generated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="text-center py-12 text-gray-500">
+            <p>Select an issue date and click "Load Data" to view forward curves.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Log Drawer -->
+<div class="forward-table-log fixed bottom-0 left-0 right-0 z-40">
+    <div id="logDrawer" class="bg-gray-900 border-t border-gray-700 transition-all duration-300 ease-in-out h-0 overflow-hidden">
+        <div id="logContent" class="h-64 p-4 font-mono text-xs overflow-y-auto custom-scroll text-gray-300"></div>
+    </div>
+    <button id="logToggle" class="w-full bg-gray-800 border-t border-gray-700 h-8 flex items-center justify-between px-4 text-xs font-medium text-gray-300 hover:text-white hover:bg-gray-700">
+        <div class="flex items-center gap-3">
+            <div id="statusDot" class="w-2 h-2 bg-green-500 rounded-full"></div>
+            <span id="statusLabel" class="uppercase tracking-wider font-semibold">Ready</span>
+            <span class="w-px h-3 bg-gray-600 mx-1"></span>
+            <span id="lastLogMsg" class="font-mono truncate max-w-md text-gray-400">System ready</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <svg id="logArrow" class="transition-transform duration-300" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
+        </div>
+    </button>
+</div>
+
+<!-- Toast notification -->
+<div id="toast" class="toast">Copied to clipboard</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/forward_table.js') }}"></script>
+{% endblock %}

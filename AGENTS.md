@@ -1,6 +1,6 @@
 # Repository Guidelines
 
-Contributors extend NGI Chart Lab by respecting the Flask app's security posture and keeping API-facing modules consistent. Treat user credentials and sample data as production-grade assets even when running locally.
+Contributors extend NGI Data Tools by respecting the Flask app's security posture and keeping API-facing modules consistent. Treat user credentials and sample data as production-grade assets even when running locally.
 
 ## Project Structure & Module Organization
 - `app.py` wires Flask routes, session handling, and template selection; keep new routes minimal and push request logic into helpers.

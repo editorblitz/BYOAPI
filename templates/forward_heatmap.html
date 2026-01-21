@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Forward Heatmap - NGI Data Tools{% endblock %}
+
+{% block head %}
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' }
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        .forward-heatmap-container {
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .custom-scroll::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+        .heatmap-canvas {
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+        }
+        #tooltip {
+            position: fixed;
+            background-color: rgba(255, 255, 255, 0.95);
+            border: 1px solid #374151;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            display: none;
+        }
+        .toast {
+            position: fixed;
+            bottom: 60px;
+            right: 20px;
+            padding: 12px 24px;
+            background-color: #1f2937;
+            color: white;
+            border-radius: 6px;
+            font-size: 14px;
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.2s, transform 0.2s;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .data-table th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: #f3f4f6;
+        }
+        /* Heatmap with sticky labels */
+        .heatmap-container {
+            position: relative;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+        }
+        .heatmap-labels {
+            position: absolute;
+            left: 0;
+            top: 0;
+            z-index: 10;
+            background: white;
+            padding-top: 25px;
+            border-right: 1px solid #d1d5db;
+            width: 160px;
+        }
+        .heatmap-labels.is-stuck {
+            position: fixed;
+            border: 1px solid #d1d5db;
+            border-radius: 4px 0 0 4px;
+        }
+        .heatmap-label {
+            height: 24px;
+            line-height: 24px;
+            padding: 0 8px;
+            font-size: 11px;
+            color: #374151;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .heatmap-canvas {
+            display: block;
+            margin-left: 160px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="forward-heatmap-container bg-white text-gray-900 min-h-[70vh]">
+    <div class="p-4">
+        <!-- Header and Controls -->
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">Forward Heatmap</h1>
+                <p class="text-sm text-gray-600">Compare forward curves between two trade dates</p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-4">
+                <!-- Start Date -->
+                <div class="flex items-center gap-2">
+                    <label for="startDate" class="text-sm font-medium text-gray-700">Start:</label>
+                    <input type="date" id="startDate" class="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent">
+                </div>
+
+                <!-- End Date -->
+                <div class="flex items-center gap-2">
+                    <label for="endDate" class="text-sm font-medium text-gray-700">End:</label>
+                    <input type="date" id="endDate" class="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent">
+                </div>
+
+                <!-- Load Button -->
+                <button id="loadDataBtn" class="px-4 py-1.5 bg-gray-900 text-white text-sm font-semibold rounded hover:bg-gray-800 transition-colors">
+                    Compare
+                </button>
+            </div>
+        </div>
+
+        <!-- Metadata Display -->
+        <div id="metadataDisplay" class="hidden mb-4 p-3 bg-gray-50 border border-gray-200 rounded">
+            <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+                <div><span class="font-medium text-gray-600">Start Trade Date:</span> <span id="startTradeDate" class="text-gray-900">-</span></div>
+                <div><span class="font-medium text-gray-600">End Trade Date:</span> <span id="endTradeDate" class="text-gray-900">-</span></div>
+                <div><span class="font-medium text-gray-600">Prompt Month:</span> <span id="promptMonth" class="text-gray-900">-</span></div>
+                <div><span class="font-medium text-gray-600">Locations:</span> <span id="locationCount" class="text-gray-900">-</span></div>
+            </div>
+        </div>
+
+        <!-- Alignment Info -->
+        <div id="alignmentInfo" class="hidden mb-4 p-3 bg-amber-50 border border-amber-200 rounded text-sm text-amber-800">
+            <strong>Data Alignment:</strong>
+            <p id="alignmentMessage"></p>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingMessage" class="hidden text-center py-12">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-3"></div>
+            <p class="text-gray-600">Loading forward curve data...</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorMessage" class="hidden text-center py-12">
+            <p class="text-red-600 font-medium" id="errorText">An error occurred</p>
+        </div>
+
+        <!-- Utility Buttons -->
+        <div id="utilityButtons" class="hidden mb-3 flex gap-2">
+            <button id="copyTableBtn" class="px-3 py-1.5 bg-gray-200 text-gray-800 text-sm font-medium rounded hover:bg-gray-300 transition-colors">
+                Copy Table
+            </button>
+        </div>
+
+        <!-- Content Container -->
+        <div id="contentContainer" class="hidden space-y-6">
+            <!-- Summary Table -->
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Prompt Month Summary</h3>
+                <div class="border border-gray-300 rounded overflow-hidden">
+                    <table id="summaryTable" class="data-table w-full text-sm border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="px-3 py-2 text-left font-semibold text-gray-700 border-b border-gray-300">Location</th>
+                                <th class="px-3 py-2 text-center font-semibold text-gray-700 border-b border-gray-300" id="startFixedHeader">Start Fixed</th>
+                                <th class="px-3 py-2 text-center font-semibold text-gray-700 border-b border-gray-300" id="endFixedHeader">End Fixed</th>
+                                <th class="px-3 py-2 text-center font-semibold text-gray-700 border-b border-gray-300">Fixed Change</th>
+                                <th class="px-3 py-2 text-center font-semibold text-gray-700 border-b border-gray-300" id="startBasisHeader">Start Basis</th>
+                                <th class="px-3 py-2 text-center font-semibold text-gray-700 border-b border-gray-300" id="endBasisHeader">End Basis</th>
+                                <th class="px-3 py-2 text-center font-semibold text-gray-700 border-b border-gray-300">Basis Change</th>
+                            </tr>
+                        </thead>
+                        <tbody id="summaryTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Fixed Price Heatmap -->
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Fixed Price Changes</h3>
+                <div class="heatmap-container" style="white-space: nowrap;">
+                    <div class="heatmap-labels" id="fixedHeatmapLabels"></div>
+                    <canvas id="fixedHeatmapCanvas" class="heatmap-canvas"></canvas>
+                </div>
+            </div>
+
+            <!-- Basis Price Heatmap -->
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Basis Price Changes</h3>
+                <div class="heatmap-container" style="white-space: nowrap;">
+                    <div class="heatmap-labels" id="basisHeatmapLabels"></div>
+                    <canvas id="basisHeatmapCanvas" class="heatmap-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="text-center py-12 text-gray-500">
+            <p>Select start and end dates, then click "Compare" to view forward curve changes.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Tooltip -->
+<div id="tooltip"></div>
+
+<!-- Log Drawer -->
+<div class="forward-heatmap-log fixed bottom-0 left-0 right-0 z-40">
+    <div id="logDrawer" class="bg-gray-900 border-t border-gray-700 transition-all duration-300 ease-in-out h-0 overflow-hidden">
+        <div id="logContent" class="h-64 p-4 font-mono text-xs overflow-y-auto custom-scroll text-gray-300"></div>
+    </div>
+    <button id="logToggle" class="w-full bg-gray-800 border-t border-gray-700 h-8 flex items-center justify-between px-4 text-xs font-medium text-gray-300 hover:text-white hover:bg-gray-700">
+        <div class="flex items-center gap-3">
+            <div id="statusDot" class="w-2 h-2 bg-green-500 rounded-full"></div>
+            <span id="statusLabel" class="uppercase tracking-wider font-semibold">Ready</span>
+            <span class="w-px h-3 bg-gray-600 mx-1"></span>
+            <span id="lastLogMsg" class="font-mono truncate max-w-md text-gray-400">System ready</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <svg id="logArrow" class="transition-transform duration-300" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
+        </div>
+    </button>
+</div>
+
+<!-- Toast notification -->
+<div id="toast" class="toast">Copied to clipboard</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/forward_heatmap.js') }}"></script>
+{% endblock %}

@@ -7,13 +7,84 @@ const ForwardCurveSpreadDashboard = {
     charts: [],
     nextChartId: 0,
     resizeListenerAdded: false,
+    logOpen: false,
+
+    // Logging functions
+    log: function(message, type = 'info') {
+        const logContent = document.getElementById('logContent');
+        const lastLogMsg = document.getElementById('lastLogMsg');
+        if (!logContent) return;
+
+        const timestamp = new Date().toLocaleTimeString();
+        const colors = {
+            info: 'text-gray-300',
+            success: 'text-green-400',
+            error: 'text-red-400',
+            warning: 'text-yellow-400'
+        };
+
+        const entry = document.createElement('div');
+        entry.className = `${colors[type] || colors.info} mb-1`;
+        entry.innerHTML = `<span class="text-gray-500">[${timestamp}]</span> ${message}`;
+        logContent.appendChild(entry);
+        logContent.scrollTop = logContent.scrollHeight;
+
+        if (lastLogMsg) {
+            lastLogMsg.textContent = message.replace(/<[^>]*>/g, '');
+        }
+    },
+
+    setStatus: function(status, label) {
+        const statusDot = document.getElementById('statusDot');
+        const statusLabel = document.getElementById('statusLabel');
+
+        const colors = {
+            ready: 'bg-green-500',
+            loading: 'bg-yellow-500',
+            error: 'bg-red-500'
+        };
+
+        if (statusDot) {
+            statusDot.className = `w-2 h-2 rounded-full ${colors[status] || colors.ready}`;
+        }
+        if (statusLabel) {
+            statusLabel.textContent = label || status.toUpperCase();
+        }
+    },
+
+    setupLogToggle: function() {
+        const logToggle = document.getElementById('logToggle');
+        const logDrawer = document.getElementById('logDrawer');
+        const logArrow = document.getElementById('logArrow');
+
+        if (logToggle && logDrawer) {
+            logToggle.addEventListener('click', () => {
+                this.logOpen = !this.logOpen;
+                if (this.logOpen) {
+                    logDrawer.classList.remove('h-0');
+                    logDrawer.classList.add('h-64');
+                    if (logArrow) logArrow.style.transform = 'rotate(180deg)';
+                } else {
+                    logDrawer.classList.remove('h-64');
+                    logDrawer.classList.add('h-0');
+                    if (logArrow) logArrow.style.transform = 'rotate(0deg)';
+                }
+            });
+        }
+    },
 
     // Location database (same as other dashboards)
     locations: {
         'Favorites': [
             { name: 'Henry Hub', value: 'SLAHH' },
-            { name: 'National Avg.', value: 'USAVG' },
-            { name: 'Waha', value: 'WTXWAHA' }
+            { name: 'Waha', value: 'WTXWAHA' },
+            { name: 'Houston Ship Channel', value: 'ETXHSHIP' },
+            { name: 'Katy', value: 'ETXKATY' },
+            { name: 'Chicago Citygate', value: 'MCWCCITY' },
+            { name: 'Algonquin Citygate', value: 'NEAALGCG' },
+            { name: 'Cheyenne Hub', value: 'RMTCHEY' },
+            { name: 'SoCal Citygate', value: 'CALSCG' },
+            { name: 'NOVA/AECO C', value: 'CDNNOVA' }
         ],
         'Northeast': [
             { name: 'Algonquin Citygate', value: 'NEAALGCG' },
@@ -51,8 +122,10 @@ const ForwardCurveSpreadDashboard = {
     ],
 
     init: function() {
+        this.setupLogToggle();
         this.setupEventListeners();
         this.setupResizeListener();
+        this.log('Forward Curve Spreads Dashboard initialized', 'success');
         this.initializeDefaultCharts();
     },
 
@@ -225,12 +298,22 @@ const ForwardCurveSpreadDashboard = {
 
         chart.isLoading = true;
         this.setChartButtonsEnabled(chartId, false);
+        this.setStatus('loading', 'LOADING');
+
+        // Get location names for logging
+        const loc1Name = this.getLocationName(chart.location1);
+        const loc2Name = this.getLocationName(chart.location2);
+
+        this.log(`Chart ${chartId + 1}: Fetching forward curve spread for <strong>${loc1Name}</strong> - <strong>${loc2Name}</strong>`);
+        this.log(`Forward horizon: ${chart.monthsForward} months, Issue date: ${chart.issueDate || 'latest'}`);
 
         try {
             let url = `/api/forward-curve-spread-data?location1=${chart.location1}&location2=${chart.location2}&months_forward=${chart.monthsForward}`;
             if (chart.issueDate) {
                 url += `&issue_date=${chart.issueDate}`;
             }
+
+            this.log(`API call: /api/forward-curve-spread-data?location1=${chart.location1}&location2=${chart.location2}&...`);
 
             const response = await fetch(url);
 
@@ -244,9 +327,15 @@ const ForwardCurveSpreadDashboard = {
                 throw new Error(data.error);
             }
 
+            const contracts = data.contracts ? data.contracts.length : 0;
+            this.log(`Received ${contracts} contract months in forward curve`, 'success');
+
             this.renderChart(chartId, data);
+            this.setStatus('ready', 'READY');
         } catch (error) {
             console.error('Error loading chart data:', error);
+            this.log(`Error: ${error.message}`, 'error');
+            this.setStatus('error', 'ERROR');
             const chartDom = document.getElementById(`chart-${chartId}`);
             if (chartDom) {
                 chartDom.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ef4444;font-size:12px;text-align:center;padding:1rem;">Error loading data: ${error.message}</div>`;
@@ -255,6 +344,14 @@ const ForwardCurveSpreadDashboard = {
             chart.isLoading = false;
             this.setChartButtonsEnabled(chartId, true);
         }
+    },
+
+    getLocationName: function(locationCode) {
+        for (const region of Object.values(this.locations)) {
+            const loc = region.find(l => l.value === locationCode);
+            if (loc) return loc.name;
+        }
+        return locationCode;
     },
 
     setChartButtonsEnabled: function(chartId, enabled) {

@@ -28,8 +28,22 @@ def midday_charts_page():
 @quick_charts_bp.route('/daily-price-charts')
 @require_api_creds
 def daily_price_charts_page():
-    """Render the Daily Price Charts page."""
+    """Render the Daily Spot Charts - Multi page."""
     return render_template('daily_price_charts.html')
+
+
+@quick_charts_bp.route('/midday-charts-multi')
+@require_api_creds
+def midday_charts_multi_page():
+    """Render the Midday Charts - Multi page."""
+    return render_template('midday_charts_multi.html')
+
+
+@quick_charts_bp.route('/daily-spot-charts')
+@require_api_creds
+def daily_spot_charts_page():
+    """Render the Daily Spot Charts (single location) page."""
+    return render_template('daily_spot_charts.html')
 
 
 @quick_charts_bp.route('/api/quick-charts')
@@ -45,13 +59,25 @@ def api_quick_charts():
         - type: Chart type ('midday' or 'daily', default: 'midday')
         - location: Location pointcode (required for type='midday')
         - locations: Comma-separated location pointcodes (required for type='daily')
+        - start_date: Optional start date (YYYY-MM-DD), defaults to 364 days ago
+        - end_date: Optional end date (YYYY-MM-DD), defaults to today
     """
     try:
         chart_type = request.args.get('type', 'midday')
 
-        # Calculate 1 year lookback
-        end_date = datetime.utcnow().date()
-        start_date = end_date - timedelta(days=364)
+        # Use provided dates or default to 1 year lookback
+        end_date_str = request.args.get('end_date')
+        start_date_str = request.args.get('start_date')
+
+        if end_date_str:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        else:
+            end_date = datetime.utcnow().date()
+
+        if start_date_str:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        else:
+            start_date = end_date - timedelta(days=364)
 
         if chart_type == 'midday':
             # Midday Alert - single location
@@ -77,6 +103,43 @@ def api_quick_charts():
                 'dates': [row['trade_date'] for row in records],
                 'averages': [row['average'] for row in records],
                 'location_name': records[0]['location_name'] if records else 'Unknown Location'
+            }
+
+            return jsonify(payload)
+
+        elif chart_type == 'midday-multi':
+            # Midday Alert - multiple locations (like daily but with midday data)
+            locations_str = request.args.get('locations')
+
+            if not locations_str:
+                return jsonify({'error': 'locations parameter is required for midday-multi chart'}), 400
+
+            locations = [loc.strip() for loc in locations_str.split(',')]
+
+            # Fetch data for each location
+            series_data = []
+            for location in locations:
+                params = {
+                    'location': location,
+                    'start_date': start_date.isoformat(),
+                    'end_date': end_date.isoformat()
+                }
+
+                raw = ngi_request('middayHistoricalData.json', params=params)
+
+                # Process the columnar data
+                records = process_midday_data(raw)
+
+                if records:
+                    series_data.append({
+                        'location_name': records[0]['location_name'],
+                        'dates': [row['trade_date'] for row in records],
+                        'averages': [row['average'] for row in records]
+                    })
+
+            # Return formatted data
+            payload = {
+                'series': series_data
             }
 
             return jsonify(payload)

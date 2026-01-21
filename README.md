@@ -1,10 +1,10 @@
-# NGI Chart Lab
+# NGI Data Tools
 
 A secure Python Flask application for visualizing Natural Gas Intelligence (NGI) data using a "Bring Your Own API" authentication model.
 
 ## Description
 
-NGI Chart Lab is a web-based charting application that allows users to visualize NGI data using their own API credentials. The app never stores or manages NGI accounts—users bring their existing NGI email and API key, and the app securely proxies requests to the NGI API on their behalf.
+NGI Data Tools is a web-based charting application that allows users to visualize NGI data using their own API credentials. The app never stores or manages NGI accounts—users bring their existing NGI email and API key, and the app securely proxies requests to the NGI API on their behalf.
 
 **Security is the top priority**: All credentials are encrypted using Fernet encryption and stored in server-side sessions. No API keys or tokens are ever exposed to the browser or logged.
 

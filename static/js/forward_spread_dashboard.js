@@ -7,13 +7,84 @@ const ForwardSpreadDashboard = {
     nextChartId: 0,
     currentDatePickerChart: null,
     resizeListenerAdded: false,
+    logOpen: false,
+
+    // Logging functions
+    log: function(message, type = 'info') {
+        const logContent = document.getElementById('logContent');
+        const lastLogMsg = document.getElementById('lastLogMsg');
+        if (!logContent) return;
+
+        const timestamp = new Date().toLocaleTimeString();
+        const colors = {
+            info: 'text-gray-300',
+            success: 'text-green-400',
+            error: 'text-red-400',
+            warning: 'text-yellow-400'
+        };
+
+        const entry = document.createElement('div');
+        entry.className = `${colors[type] || colors.info} mb-1`;
+        entry.innerHTML = `<span class="text-gray-500">[${timestamp}]</span> ${message}`;
+        logContent.appendChild(entry);
+        logContent.scrollTop = logContent.scrollHeight;
+
+        if (lastLogMsg) {
+            lastLogMsg.textContent = message.replace(/<[^>]*>/g, '');
+        }
+    },
+
+    setStatus: function(status, label) {
+        const statusDot = document.getElementById('statusDot');
+        const statusLabel = document.getElementById('statusLabel');
+
+        const colors = {
+            ready: 'bg-green-500',
+            loading: 'bg-yellow-500',
+            error: 'bg-red-500'
+        };
+
+        if (statusDot) {
+            statusDot.className = `w-2 h-2 rounded-full ${colors[status] || colors.ready}`;
+        }
+        if (statusLabel) {
+            statusLabel.textContent = label || status.toUpperCase();
+        }
+    },
+
+    setupLogToggle: function() {
+        const logToggle = document.getElementById('logToggle');
+        const logDrawer = document.getElementById('logDrawer');
+        const logArrow = document.getElementById('logArrow');
+
+        if (logToggle && logDrawer) {
+            logToggle.addEventListener('click', () => {
+                this.logOpen = !this.logOpen;
+                if (this.logOpen) {
+                    logDrawer.classList.remove('h-0');
+                    logDrawer.classList.add('h-64');
+                    if (logArrow) logArrow.style.transform = 'rotate(180deg)';
+                } else {
+                    logDrawer.classList.remove('h-64');
+                    logDrawer.classList.add('h-0');
+                    if (logArrow) logArrow.style.transform = 'rotate(0deg)';
+                }
+            });
+        }
+    },
 
     // Location database (same as daily_prices.js)
     locations: {
         'Favorites': [
             { name: 'Henry Hub', value: 'SLAHH' },
-            { name: 'National Avg.', value: 'USAVG' },
-            { name: 'Waha', value: 'WTXWAHA' }
+            { name: 'Waha', value: 'WTXWAHA' },
+            { name: 'Houston Ship Channel', value: 'ETXHSHIP' },
+            { name: 'Katy', value: 'ETXKATY' },
+            { name: 'Chicago Citygate', value: 'MCWCCITY' },
+            { name: 'Algonquin Citygate', value: 'NEAALGCG' },
+            { name: 'Cheyenne Hub', value: 'RMTCHEY' },
+            { name: 'SoCal Citygate', value: 'CALSCG' },
+            { name: 'NOVA/AECO C', value: 'CDNNOVA' }
         ],
         'South Texas': [
             { name: 'Agua Dulce', value: 'STXAGUAD' },
@@ -235,8 +306,10 @@ const ForwardSpreadDashboard = {
     ],
 
     init: function() {
+        this.setupLogToggle();
         this.setupEventListeners();
         this.setupResizeListener();
+        this.log('Fixed Forward Spreads Dashboard initialized', 'success');
         this.initializeDefaultCharts();
     },
 
@@ -553,12 +626,22 @@ const ForwardSpreadDashboard = {
 
         chart.isLoading = true;
         this.setChartButtonsEnabled(chartId, false);
+        this.setStatus('loading', 'LOADING');
 
         const dateRange = this.getDateRange(chart.timeframe, chart.customStartDate, chart.customEndDate);
+
+        // Get location names for logging
+        const loc1Name = this.getLocationName(chart.location1);
+        const loc2Name = this.getLocationName(chart.location2);
+
+        this.log(`Chart ${chartId + 1}: Fetching forward spread for <strong>${loc1Name}</strong> - <strong>${loc2Name}</strong>`);
+        this.log(`Contract: ${chart.contract}, Date range: ${dateRange.start} to ${dateRange.end}`);
 
         try {
             // Fetch forward spread data using the new endpoint
             const url = `/api/forward-spread-data?location1=${chart.location1}&location2=${chart.location2}&start_date=${dateRange.start}&end_date=${dateRange.end}&contract=${chart.contract}`;
+
+            this.log(`API call: /api/forward-spread-data?location1=${chart.location1}&location2=${chart.location2}&...`);
 
             const response = await fetch(url);
 
@@ -573,9 +656,15 @@ const ForwardSpreadDashboard = {
                 throw new Error(data.error);
             }
 
+            const dataPoints = data.dates ? data.dates.length : 0;
+            this.log(`Received ${dataPoints} data points for spread calculation`, 'success');
+
             this.renderChart(chartId, data);
+            this.setStatus('ready', 'READY');
         } catch (error) {
             console.error('Error loading chart data:', error);
+            this.log(`Error: ${error.message}`, 'error');
+            this.setStatus('error', 'ERROR');
             // Show error in chart area instead of alert
             const chartDom = document.getElementById(`chart-${chartId}`);
             if (chartDom) {
@@ -585,6 +674,14 @@ const ForwardSpreadDashboard = {
             chart.isLoading = false;
             this.setChartButtonsEnabled(chartId, true);
         }
+    },
+
+    getLocationName: function(locationCode) {
+        for (const region of Object.values(this.locations)) {
+            const loc = region.find(l => l.value === locationCode);
+            if (loc) return loc.name;
+        }
+        return locationCode;
     },
 
     setChartButtonsEnabled: function(chartId, enabled) {

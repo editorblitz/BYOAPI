@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Midday Charts - NGI Chart Lab{% endblock %}
+{% block title %}Midday Charts - NGI Data Tools{% endblock %}
 
 {% block head %}
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
@@ -73,6 +73,18 @@
             <main class="flex-1 mr-4">
                 <div class="bg-white border border-gray-300 p-4">
                     <div id="chart"></div>
+                </div>
+                <!-- Date Range (below chart, right-aligned) -->
+                <div id="dateRangeSection" class="hidden flex justify-end mt-2">
+                    <div class="flex items-center gap-2 text-xs text-gray-500">
+                        <span>Date range:</span>
+                        <input type="date" id="startDate" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white">
+                        <span>to</span>
+                        <input type="date" id="endDate" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white">
+                        <button id="updateChartBtn" class="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs hover:bg-gray-300 border border-gray-300">
+                            Update
+                        </button>
+                    </div>
                 </div>
             </main>
         </div>

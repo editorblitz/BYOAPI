@@ -262,32 +262,24 @@ const NetbacksApp = {
         btn.textContent = 'Fetching...';
         btn.disabled = true;
         this.setSystemStatus('working');
+        this.openLogDrawer();
 
         this.state.hiddenSeries.clear();
 
+        // Use SSE streaming for time_series mode
+        if (mode === 'time_series') {
+            await this.analyzeTimeSeriesStream();
+            return;
+        }
+
+        // Forward curve mode uses regular fetch
         const params = new URLSearchParams();
         params.append('mode', mode);
         params.append('show_spreads', showSpreads);
 
-        if (mode === 'forward_curve') {
-            const issueDate = document.getElementById('issueDate').value;
-            params.append('issue_date', issueDate);
-            this.log(`Fetching forward curves for issue date: ${issueDate}`);
-        } else if (mode === 'time_series') {
-            const contract = document.getElementById('contractMonthSelect').value;
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
-            params.append('contract', contract);
-            params.append('start_date', startDate);
-            params.append('end_date', endDate);
-
-            // Calculate number of days
-            const start = new Date(startDate);
-            const end = new Date(endDate);
-            const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-            this.log(`Fetching time series for ${contract} from ${startDate} to ${endDate} (${days} days)`);
-            this.log(`Note: This will make ${days} API calls - please be patient...`);
-        }
+        const issueDate = document.getElementById('issueDate').value;
+        params.append('issue_date', issueDate);
+        this.log(`Fetching forward curves for issue date: ${issueDate}`);
 
         try {
             this.log(`Requesting: /api/netbacks?${params.toString()}`);
@@ -316,12 +308,6 @@ const NetbacksApp = {
             const dateCount = data.dates ? data.dates.length : 0;
             this.log(`Analysis complete. ${seriesCount} series, ${dateCount} data points.`);
 
-            if (data.metadata) {
-                if (data.metadata.total_dates) {
-                    this.log(`Fetched data for ${data.metadata.total_dates} dates.`);
-                }
-            }
-
         } catch(err) {
             this.log(`Error: ${err.message}`);
             alert(err.message);
@@ -331,6 +317,94 @@ const NetbacksApp = {
             btn.disabled = false;
             this.setSystemStatus('ready');
         }
+    },
+
+    analyzeTimeSeriesStream: async function() {
+        const btn = document.getElementById('analyzeBtn');
+        const showSpreads = this.state.showSpreads;
+        const contract = document.getElementById('contractMonthSelect').value;
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+
+        // Calculate number of days for initial log
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+
+        this.log(`<strong>Starting time series fetch for ${contract}</strong>`);
+        this.log(`Date range: ${startDate} to ${endDate} (${days} calendar days)`);
+        this.log(`This will fetch data for each trading day - streaming progress...`);
+
+        const params = new URLSearchParams();
+        params.append('mode', 'time_series');
+        params.append('show_spreads', showSpreads);
+        params.append('contract', contract);
+        params.append('start_date', startDate);
+        params.append('end_date', endDate);
+
+        return new Promise((resolve) => {
+            const eventSource = new EventSource(`/api/netbacks-stream?${params.toString()}`);
+            let lastProgressTime = Date.now();
+
+            eventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+
+                    if (data.type === 'start') {
+                        this.log(`Fetching data for ${data.total} dates...`);
+                    } else if (data.type === 'progress') {
+                        // Log progress updates (throttle to avoid flooding)
+                        const now = Date.now();
+                        const shouldLog = (now - lastProgressTime > 200) || data.current === data.total || data.status === 'data';
+
+                        if (shouldLog) {
+                            lastProgressTime = now;
+                            if (data.status === 'data') {
+                                const ttfStr = data.ttf !== null ? `TTF=$${data.ttf.toFixed(2)}` : 'TTF=-';
+                                const jkmStr = data.jkm !== null ? `JKM=$${data.jkm.toFixed(2)}` : 'JKM=-';
+                                const hhStr = data.hh !== null ? `HH=$${data.hh.toFixed(2)}` : 'HH=-';
+                                this.log(`[${data.current}/${data.total}] ${data.date}: <span class="text-green-400">✓</span> ${ttfStr}, ${jkmStr}, ${hhStr}`);
+                            } else if (data.status === 'skip') {
+                                this.log(`[${data.current}/${data.total}] ${data.date}: <span class="text-gray-500">- skipped (weekend/holiday)</span>`);
+                            } else if (data.status === 'error') {
+                                this.log(`[${data.current}/${data.total}] ${data.date}: <span class="text-red-400">✗ ${data.error}</span>`);
+                            }
+                        }
+
+                        // Update button text with progress
+                        btn.textContent = `Fetching... ${data.percent}%`;
+
+                    } else if (data.type === 'complete') {
+                        eventSource.close();
+
+                        this.log(`<strong>Fetch complete!</strong> ${data.metadata.dates_with_data} dates with data, ${data.metadata.dates_skipped} skipped`);
+
+                        this.renderChart(data);
+                        this.renderTable(data);
+
+                        const seriesCount = data.series ? data.series.length : 0;
+                        const dateCount = data.dates ? data.dates.length : 0;
+                        this.log(`Analysis complete. ${seriesCount} series, ${dateCount} data points.`);
+
+                        btn.textContent = 'Submit';
+                        btn.disabled = false;
+                        this.setSystemStatus('ready');
+                        resolve();
+                    }
+                } catch (err) {
+                    console.error('Error parsing SSE data:', err);
+                }
+            };
+
+            eventSource.onerror = (err) => {
+                eventSource.close();
+                this.log(`<span class="text-red-400">Stream error - connection lost</span>`);
+                btn.textContent = 'Submit';
+                btn.disabled = false;
+                this.setSystemStatus('error');
+                resolve();
+            };
+        });
     },
 
     renderChart: function(data) {

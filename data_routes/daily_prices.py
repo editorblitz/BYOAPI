@@ -353,8 +353,6 @@ def process_standard_view(records):
 
     dates = [row.get('trade_date') for row in records]
     averages = [row.get('average') for row in records]
-    highs = [row.get('high') for row in records]
-    lows = [row.get('low') for row in records]
 
     series = [
         {
@@ -363,27 +361,7 @@ def process_standard_view(records):
             'data': averages,
             'color': '#2563eb',
             'itemStyle': {'color': '#2563eb'},
-            'lineStyle': {'width': 3, 'color': '#2563eb'},
-            'symbol': 'none',
-            'showSymbol': False
-        },
-        {
-            'name': 'High',
-            'type': 'line',
-            'data': highs,
-            'color': '#22c55e',
-            'itemStyle': {'color': '#22c55e'},
-            'lineStyle': {'width': 1, 'type': 'dashed', 'color': '#22c55e'},
-            'symbol': 'none',
-            'showSymbol': False
-        },
-        {
-            'name': 'Low',
-            'type': 'line',
-            'data': lows,
-            'color': '#f59e0b',
-            'itemStyle': {'color': '#f59e0b'},
-            'lineStyle': {'width': 1, 'type': 'dashed', 'color': '#f59e0b'},
+            'lineStyle': {'width': 2.5, 'color': '#2563eb'},
             'symbol': 'none',
             'showSymbol': False
         }
@@ -513,19 +491,15 @@ def process_seasonality_view(current_records, previous_records, year, historical
     for idx, date_key in enumerate(date_keys):
         curr_val = current_values[idx]
         prev_val = previous_values[idx]
-        diff = None
-        pct = None
-
-        if curr_val is not None and prev_val is not None and prev_val != 0:
-            diff = round(curr_val - prev_val, 4)
-            pct = round((diff / prev_val) * 100, 2)
+        high_val = range_max[idx] if range_max else None
+        low_val = range_min[idx] if range_min else None
 
         table_rows.append({
             'date': date_key,
             'curr': curr_val,
             'prev': prev_val,
-            'diff': diff,
-            'pct': pct
+            'high': high_val,
+            'low': low_val
         })
 
     return {
@@ -535,8 +509,8 @@ def process_seasonality_view(current_records, previous_records, year, historical
             'Date (MM-DD)',
             f'{year} Price',
             f'{prev_year} Price',
-            'Diff ($)',
-            'Diff (%)'
+            '5-Year High',
+            '5-Year Low'
         ],
         'table_rows': table_rows,
         'raw_records': []

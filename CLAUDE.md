@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a **secure Python Flask application** designed to run on Replit. It's a "chart lab" for Natural Gas Intelligence (NGI) data that implements a **"Bring Your Own API"** authentication model.
+This is a **secure Python Flask application** designed to run on Replit. It's a data viewer for Natural Gas Intelligence (NGI) data that implements a **"Bring Your Own API"** authentication model.
 
 **Key principle:** Users bring their own NGI API credentials (email + API key) and log in. The app never manages NGI accounts—it just proxies authenticated requests to the NGI API (https://api.ngidata.com) on the user's behalf.
 

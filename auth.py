@@ -86,6 +86,26 @@ def require_api_creds(f):
     return decorated_function
 
 
+def require_api_creds_json(f):
+    """
+    Decorator for API endpoints that return JSON.
+    Returns JSON error response instead of HTML redirect if credentials are missing or expired.
+    """
+    from flask import jsonify
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('ngi_email_enc') or not session.get('ngi_key_enc'):
+            return jsonify({'success': False, 'error': 'Not authenticated. Please log in.', 'auth_required': True}), 401
+
+        if not check_session_expiry():
+            session.clear()
+            return jsonify({'success': False, 'error': 'Session expired. Please log in again.', 'auth_required': True}), 401
+
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 def get_decrypted_credentials():
     """
     Get decrypted NGI credentials from the session.

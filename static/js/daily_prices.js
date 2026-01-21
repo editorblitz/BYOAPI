@@ -12,9 +12,16 @@ const App = {
         // Full Location Database
         locations: {
             'Favorites': [
-                { name: 'Henry Hub', value: 'SLAHH' },
                 { name: 'National Avg.', value: 'USAVG' },
-                { name: 'Waha', value: 'WTXWAHA' }
+                { name: 'Henry Hub', value: 'SLAHH' },
+                { name: 'Waha', value: 'WTXWAHA' },
+                { name: 'Houston Ship Channel', value: 'ETXHSHIP' },
+                { name: 'Katy', value: 'ETXKATY' },
+                { name: 'Chicago Citygate', value: 'MCWCCITY' },
+                { name: 'Algonquin Citygate', value: 'NEAALGCG' },
+                { name: 'Cheyenne Hub', value: 'RMTCHEY' },
+                { name: 'SoCal Citygate', value: 'CALSCG' },
+                { name: 'NOVA/AECO C', value: 'CDNNOVA' }
             ],
             'South Texas': [
                 { name: 'Agua Dulce', value: 'STXAGUAD' },
@@ -818,6 +825,10 @@ const App = {
                         color: seriesColor,
                         opacity: isHidden ? 0 : (s.itemStyle?.opacity ?? 1)
                     },
+                    areaStyle: s.areaStyle ? {
+                        ...s.areaStyle,
+                        opacity: isHidden ? 0 : (s.areaStyle.opacity ?? 1)
+                    } : undefined,
                     smooth: false,
                     silent: isHidden
                 };
@@ -970,17 +981,22 @@ const App = {
             const option = this.state.chartInstance.getOption();
             const updatedSeries = option.series.map(s => {
                 if (s.name && s.name !== '') {
+                    const isHidden = this.state.hiddenSeries.has(s.name);
                     return {
                         ...s,
                         lineStyle: {
                             ...s.lineStyle,
-                            opacity: this.state.hiddenSeries.has(s.name) ? 0 : 1
+                            opacity: isHidden ? 0 : 1
                         },
                         itemStyle: {
                             ...s.itemStyle,
-                            opacity: this.state.hiddenSeries.has(s.name) ? 0 : 1
+                            opacity: isHidden ? 0 : 1
                         },
-                        silent: this.state.hiddenSeries.has(s.name)
+                        areaStyle: s.areaStyle ? {
+                            ...s.areaStyle,
+                            opacity: isHidden ? 0 : (s.areaStyle.opacity ?? 1)
+                        } : undefined,
+                        silent: isHidden
                     };
                 }
                 return s;
@@ -1098,7 +1114,7 @@ const App = {
                     row.average, row.volume, row.deals, row.flow_start_date, row.flow_end_date
                 ];
             } else if (mode === 'seasonality') {
-                values = [row.date, row.curr, row.prev, row.diff, row.pct];
+                values = [row.date, row.curr, row.prev, row.high, row.low];
             } else if (mode === 'spreads') {
                 values = [row.date, row.location1, row.location2, row.spread];
             } else if (mode === 'compare') {

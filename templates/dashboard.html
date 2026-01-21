@@ -1,32 +1,190 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - NGI Chart Lab{% endblock %}
+{% block title %}NGI Data Tools{% endblock %}
+
+{% block head %}
+<style>
+    /* Filter bar */
+    .filter-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .filter-label {
+        color: var(--text-muted);
+        font-size: 0.813rem;
+        margin-right: 0.5rem;
+    }
+
+    .filter-btn {
+        padding: 0.375rem 0.75rem;
+        border: 1px solid transparent;
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--text-muted);
+        font-size: 0.813rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .filter-btn:hover {
+        border-color: var(--border-color);
+        color: var(--text-color);
+    }
+
+    .filter-btn.active {
+        color: var(--text-color);
+        background: var(--bg-color);
+        border-color: var(--border-color);
+    }
+
+    /* Sections */
+    .tool-section {
+        margin-bottom: 1.5rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--border-light);
+    }
+
+    .tool-section:first-of-type {
+        border-top: none;
+        padding-top: 0;
+    }
+
+    .tool-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .section-heading {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.75rem;
+    }
+
+    /* Hidden state for filtering */
+    .tool-section.hidden {
+        display: none;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="dashboard">
     <div class="dashboard-header">
-        <h1>Welcome to NGI Chart Lab</h1>
         <p class="session-info">
             Logged in as <strong>{{ session_info.email }}</strong> |
             Session expires in {{ session_info.expires_in }}
         </p>
     </div>
 
-    <div class="tools-grid">
-        {% for tool in tools %}
-        <a href="{{ tool.url }}" class="tool-card">
-            <div class="tool-image-placeholder">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="100%" height="100%">
-                    <rect width="400" height="200" fill="#e5e7eb"/>
-                    <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="14" fill="#9ca3af">Image Placeholder</text>
-                </svg>
-            </div>
-            <div class="tool-content">
-                <h3>{{ tool.name }}</h3>
-                <p>{{ tool.description }}</p>
-            </div>
-        </a>
-        {% endfor %}
+    <div class="filter-bar">
+        <span class="filter-label">Filter:</span>
+        <button class="filter-btn active" data-category="all">All</button>
+        <button class="filter-btn" data-category="spot">Spot Prices</button>
+        <button class="filter-btn" data-category="forwards">Forwards</button>
+        <button class="filter-btn" data-category="lng">LNG</button>
+        <button class="filter-btn" data-category="charts">Chart Generators</button>
     </div>
+
+    <section class="tool-section" data-category="spot">
+        <h2 class="section-heading">Spot Prices</h2>
+        <div class="tools-grid">
+            {% for tool in tools if tool.category == 'spot' %}
+            <a href="{{ tool.url }}" class="tool-card">
+                <div class="tool-image">
+                    <img src="{{ url_for('static', filename='images/tools/' + tool.image) }}" alt="{{ tool.name }}" onerror="this.parentElement.innerHTML='<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 400 200\' width=\'100%\' height=\'100%\'><rect width=\'400\' height=\'200\' fill=\'#e5e7eb\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-family=\'Arial\' font-size=\'14\' fill=\'#9ca3af\'>Image Placeholder</text></svg>'">
+                </div>
+                <div class="tool-content">
+                    <h3>{{ tool.name }}</h3>
+                    <p>{{ tool.description }}</p>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="tool-section" data-category="forwards">
+        <h2 class="section-heading">Forward Curves</h2>
+        <div class="tools-grid">
+            {% for tool in tools if tool.category == 'forwards' %}
+            <a href="{{ tool.url }}" class="tool-card">
+                <div class="tool-image">
+                    <img src="{{ url_for('static', filename='images/tools/' + tool.image) }}" alt="{{ tool.name }}" onerror="this.parentElement.innerHTML='<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 400 200\' width=\'100%\' height=\'100%\'><rect width=\'400\' height=\'200\' fill=\'#e5e7eb\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-family=\'Arial\' font-size=\'14\' fill=\'#9ca3af\'>Image Placeholder</text></svg>'">
+                </div>
+                <div class="tool-content">
+                    <h3>{{ tool.name }}</h3>
+                    <p>{{ tool.description }}</p>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="tool-section" data-category="lng">
+        <h2 class="section-heading">LNG</h2>
+        <div class="tools-grid">
+            {% for tool in tools if tool.category == 'lng' %}
+            <a href="{{ tool.url }}" class="tool-card">
+                <div class="tool-image">
+                    <img src="{{ url_for('static', filename='images/tools/' + tool.image) }}" alt="{{ tool.name }}" onerror="this.parentElement.innerHTML='<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 400 200\' width=\'100%\' height=\'100%\'><rect width=\'400\' height=\'200\' fill=\'#e5e7eb\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-family=\'Arial\' font-size=\'14\' fill=\'#9ca3af\'>Image Placeholder</text></svg>'">
+                </div>
+                <div class="tool-content">
+                    <h3>{{ tool.name }}</h3>
+                    <p>{{ tool.description }}</p>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="tool-section" data-category="charts">
+        <h2 class="section-heading">Chart Generators</h2>
+        <div class="tools-grid">
+            {% for tool in tools if tool.category == 'charts' %}
+            <a href="{{ tool.url }}" class="tool-card">
+                <div class="tool-image">
+                    <img src="{{ url_for('static', filename='images/tools/' + tool.image) }}" alt="{{ tool.name }}" onerror="this.parentElement.innerHTML='<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 400 200\' width=\'100%\' height=\'100%\'><rect width=\'400\' height=\'200\' fill=\'#e5e7eb\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-family=\'Arial\' font-size=\'14\' fill=\'#9ca3af\'>Image Placeholder</text></svg>'">
+                </div>
+                <div class="tool-content">
+                    <h3>{{ tool.name }}</h3>
+                    <p>{{ tool.description }}</p>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const sections = document.querySelectorAll('.tool-section');
+
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const category = this.dataset.category;
+
+            // Update active button
+            filterBtns.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+
+            // Filter sections
+            sections.forEach(section => {
+                if (category === 'all' || section.dataset.category === category) {
+                    section.classList.remove('hidden');
+                } else {
+                    section.classList.add('hidden');
+                }
+            });
+        });
+    });
+});
+</script>
 {% endblock %}

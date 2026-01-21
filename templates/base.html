@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}NGI Chart Lab{% endblock %}</title>
+    <title>{% block title %}NGI Data Tools{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <!-- ECharts CDN -->
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
@@ -12,18 +12,12 @@
 <body>
     <nav class="navbar">
         <div class="nav-brand">
-            <a href="{{ url_for('dashboard') }}">NGI Chart Lab</a>
-        </div>
-        <div class="nav-links">
-            <a href="{{ url_for('daily_prices.daily_prices_page') }}">Spot Prices</a>
-            <a href="{{ url_for('forward_prices.forward_prices_page') }}">Forward Prices</a>
-            <a href="{{ url_for('lng_flows.lng_flows_page') }}">LNG Flows</a>
-            <a href="{{ url_for('netbacks.netbacks_page') }}">Netbacks</a>
-            <a href="{{ url_for('quick_charts.quick_charts_page') }}">Quick Charts</a>
+            <a href="{{ url_for('dashboard') }}">NGI Data Tools</a>
         </div>
         <div class="nav-user">
             {% if session.get('user_email') %}
             <span class="user-email">{{ session.get('user_email') }}</span>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-dashboard">Home</a>
             <a href="{{ url_for('auth.logout') }}" class="btn btn-logout">Logout</a>
             {% endif %}
         </div>
@@ -44,7 +38,7 @@
     </main>
 
     <footer class="footer">
-        <p>NGI Chart Lab - Powered by <a href="https://www.naturalgasintel.com" target="_blank">Natural Gas Intelligence</a></p>
+        <p>NGI Data Tools - Powered by <a href="https://www.naturalgasintel.com" target="_blank">Natural Gas Intelligence</a></p>
     </footer>
 
     {% block scripts %}{% endblock %}

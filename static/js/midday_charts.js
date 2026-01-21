@@ -12,7 +12,14 @@ const MiddayCharts = {
         'Favorites': [
             { name: 'National Avg.', value: 'USAVG' },
             { name: 'Henry Hub', value: 'SLAHH' },
-            { name: 'Waha', value: 'WTXWAHA' }
+            { name: 'Waha', value: 'WTXWAHA' },
+            { name: 'Houston Ship Channel', value: 'ETXHSHIP' },
+            { name: 'Katy', value: 'ETXKATY' },
+            { name: 'Chicago Citygate', value: 'MCWCCITY' },
+            { name: 'Algonquin Citygate', value: 'NEAALGCG' },
+            { name: 'Cheyenne Hub', value: 'RMTCHEY' },
+            { name: 'SoCal Citygate', value: 'CALSCG' },
+            { name: 'NOVA/AECO C', value: 'CDNNOVA' }
         ],
         'South Texas': [
             { name: 'Agua Dulce', value: 'STXAGUAD' },
@@ -261,6 +268,7 @@ const MiddayCharts = {
         document.getElementById('regionSelect').addEventListener('change', () => this.updateLocations());
         document.getElementById('generateBtn').addEventListener('click', () => this.handleGenerate());
         document.getElementById('downloadBtn').addEventListener('click', () => this.downloadChart());
+        document.getElementById('updateChartBtn').addEventListener('click', () => this.handleGenerate());
     },
 
     handleGenerate: async function() {
@@ -268,8 +276,25 @@ const MiddayCharts = {
             const location = document.getElementById('locationSelect').value;
             this.currentLocationName = document.querySelector('#locationSelect option:checked').textContent;
 
-            this.log(`Fetching midday chart for ${this.currentLocationName}...`);
-            const response = await fetch(`/api/quick-charts?type=midday&location=${location}`);
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            // Validate dates only if both are provided (for updates)
+            if (startDate && endDate && startDate > endDate) {
+                alert('Start date must be before end date.');
+                return;
+            }
+
+            // Build URL with optional date params
+            let url = `/api/quick-charts?type=midday&location=${location}`;
+            if (startDate && endDate) {
+                url += `&start_date=${startDate}&end_date=${endDate}`;
+                this.log(`Fetching midday chart for ${this.currentLocationName} from ${startDate} to ${endDate}...`);
+            } else {
+                this.log(`Fetching midday chart for ${this.currentLocationName} (last 12 months)...`);
+            }
+
+            const response = await fetch(url);
             if (!response.ok) {
                 throw new Error(`Failed to fetch data: ${response.status}`);
             }
@@ -279,8 +304,15 @@ const MiddayCharts = {
             this.renderChart(data);
             this.log(`Chart rendered: <strong>750×400px</strong> display (aspect ratio 15:8) • Exports as <strong>828×447px WebP</strong>`);
 
-            // Show download button
+            // Show download button and date range section
             document.getElementById('downloadBtn').classList.remove('hidden');
+            document.getElementById('dateRangeSection').classList.remove('hidden');
+
+            // Update date inputs to show actual data range
+            if (data.dates && data.dates.length > 0) {
+                document.getElementById('startDate').value = data.dates[0];
+                document.getElementById('endDate').value = data.dates[data.dates.length - 1];
+            }
         } catch (error) {
             console.error('Error fetching chart data:', error);
             this.log(`<span class="text-red-400">Error: ${error.message}</span>`);
@@ -299,9 +331,9 @@ const MiddayCharts = {
         // Create fresh chart instance
         this.chart = echarts.init(chartDom);
 
-        // Limit to last 364 days
-        const limitedAverages = data.averages.slice(-364);
-        const limitedDates = data.dates.slice(-364);
+        // Use data as-is (API returns the requested date range)
+        const limitedAverages = data.averages;
+        const limitedDates = data.dates;
 
         // Calculate Y-axis bounds
         const validPrices = limitedAverages.filter(price => !isNaN(price) && price !== null);
@@ -413,6 +445,10 @@ const MiddayCharts = {
                         const labelIndices = [];
                         for (let i = 0; i <= numIntervals; i++) {
                             labelIndices.push(Math.round(i * step));
+                        }
+                        // Always include the last index to show the latest date
+                        if (!labelIndices.includes(lastIndex)) {
+                            labelIndices.push(lastIndex);
                         }
                         return labelIndices.includes(index);
                     },

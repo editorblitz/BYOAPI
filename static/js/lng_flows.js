@@ -155,9 +155,6 @@ const LNGApp = {
         btn.disabled = true;
         this.setSystemStatus('working');
 
-        // Auto-open log drawer to show progress
-        this.openLogDrawer();
-
         // Reset stored data
         this.state.apiData = {};
 
@@ -321,9 +318,8 @@ const LNGApp = {
                 color: '#2563eb',
                 itemStyle: {'color': '#2563eb'},
                 lineStyle: {'width': 3, 'color': '#2563eb'},
-                symbol: 'circle',
-                symbolSize: 6,
-                smooth: true
+                symbol: 'none',
+                smooth: false
             }],
             table_columns: ['Date', 'Terminal', 'Scheduled Quantity (Dth)', 'Scheduled Quantity (Million Dth)', 'Scheduled Quantity (Bcf)'],
             table_rows: processedData.map(item => ({
@@ -476,9 +472,8 @@ const LNGApp = {
                 color: '#2563eb',
                 itemStyle: { color: '#2563eb' },
                 lineStyle: { width: 3, color: '#2563eb' },
-                symbol: 'circle',
-                symbolSize: 6,
-                smooth: true
+                symbol: 'none',
+                smooth: false
             }],
             dataZoom: [
                 {

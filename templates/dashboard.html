@@ -86,7 +86,7 @@
         <span class="filter-label">Filter:</span>
         <button class="filter-btn active" data-category="all">All</button>
         <button class="filter-btn" data-category="spot">Spot Prices</button>
-        <button class="filter-btn" data-category="forwards">Forwards</button>
+        <button class="filter-btn" data-category="forwards">Forward Look</button>
         <button class="filter-btn" data-category="lng">LNG</button>
         <button class="filter-btn" data-category="charts">Chart Generators</button>
     </div>
@@ -109,7 +109,7 @@
     </section>
 
     <section class="tool-section" data-category="forwards">
-        <h2 class="section-heading">Forward Curves</h2>
+        <h2 class="section-heading">Forward Look</h2>
         <div class="tools-grid">
             {% for tool in tools if tool.category == 'forwards' %}
             <a href="{{ tool.url }}" class="tool-card">

@@ -501,15 +501,16 @@ const StripCalculator = {
                         return;
                     }
 
-                    // Check content type to avoid parsing HTML as JSON
-                    const contentType = response.headers.get('content-type');
-                    if (!contentType || !contentType.includes('application/json')) {
+                    // Try to parse JSON response
+                    let data;
+                    try {
+                        data = await response.json();
+                    } catch (parseError) {
+                        // Not valid JSON - likely HTML redirect or error page
                         skipped++;
-                        this.log(`[${i + 1}/${issueDates.length}] ${issueDate} - Invalid response (not JSON)`, 'warn');
+                        this.log(`[${i + 1}/${issueDates.length}] ${issueDate} - Invalid response`, 'warn');
                         continue;
                     }
-
-                    const data = await response.json();
 
                     // Check for auth_required flag
                     if (data.auth_required) {
@@ -521,7 +522,7 @@ const StripCalculator = {
 
                     if (!response.ok || !data.success) {
                         skipped++;
-                        this.log(`[${i + 1}/${issueDates.length}] ${issueDate} - No data (weekend/holiday)`, 'warn');
+                        this.log(`[${i + 1}/${issueDates.length}] ${issueDate} - No data`, 'warn');
                         continue;
                     }
 
@@ -768,6 +769,7 @@ const StripCalculator = {
             },
             yAxis: {
                 type: 'value',
+                scale: true,
                 axisLabel: {
                     formatter: val => '$' + val.toFixed(2),
                     fontSize: 11

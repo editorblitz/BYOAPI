@@ -6,6 +6,7 @@ body.daily-prices-pro-page {
 
 body.daily-prices-pro-page .main-content {
     padding: 0;
+    padding-top: calc(52px + 1.5rem); /* Offset for fixed navbar */
     max-width: 100%;
 }
 

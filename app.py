@@ -9,9 +9,9 @@ from datetime import timedelta
 from flask import Flask, redirect, url_for, render_template, session
 from flask_session import Session
 from flask_wtf.csrf import CSRFProtect
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
+
+from extensions import limiter
 
 # Load environment variables from .env file (for local development)
 load_dotenv()
@@ -39,15 +39,7 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
 # Initialize extensions
 Session(app)
 csrf = CSRFProtect(app)
-
-# Rate limiting for brute force protection
-# Note: High limits for API endpoints; auth routes have stricter limits applied separately
-limiter = Limiter(
-    key_func=get_remote_address,
-    app=app,
-    default_limits=["5000 per day", "1000 per hour"],
-    storage_uri="memory://"
-)
+limiter.init_app(app)
 
 # Initialize encryption
 init_encryption(app)
@@ -241,17 +233,6 @@ def internal_error(e):
     return render_template('error.html',
                            error_code=500,
                            error_message="An internal error occurred. Please try again later."), 500
-
-
-# ============= RATE LIMITING FOR AUTH =============
-
-# Apply stricter rate limiting to auth route
-@limiter.limit("5 per minute")
-@app.route('/auth', methods=['POST'])
-def rate_limited_auth():
-    """This route handler exists only to apply rate limiting to POST /auth."""
-    # The actual handling is done by auth_bp
-    pass
 
 
 # ============= MAIN =============

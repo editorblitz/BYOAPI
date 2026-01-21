@@ -11,6 +11,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from cryptography.fernet import Fernet, InvalidToken
 import requests
 
+from extensions import limiter
+
 # Blueprint for auth routes
 auth_bp = Blueprint('auth', __name__)
 
@@ -220,6 +222,7 @@ def verify_ngi_credentials(email: str, api_key: str) -> bool:
 # ============= AUTH ROUTES =============
 
 @auth_bp.route('/auth', methods=['GET', 'POST'])
+@limiter.limit("5 per minute", methods=["POST"])
 def login():
     """Handle login page display and form submission."""
     # If already logged in with valid session, redirect to dashboard

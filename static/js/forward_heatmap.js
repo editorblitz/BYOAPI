@@ -211,6 +211,13 @@ const ForwardHeatmap = {
             const response = await fetch(`/api/forward-heatmap?${params}`);
             const data = await response.json();
 
+            // Check for session expiration
+            if (response.status === 401 || data.auth_required) {
+                this.log('Session expired. Redirecting to login...', 'error');
+                window.location.href = '/auth';
+                return;
+            }
+
             if (!response.ok || !data.success) {
                 throw new Error(data.error || 'Failed to load data');
             }

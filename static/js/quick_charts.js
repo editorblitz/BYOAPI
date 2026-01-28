@@ -366,10 +366,18 @@ const QuickCharts = {
 
                 this.log(`Fetching midday chart for ${this.currentLocationName}...`);
                 const response = await fetch(`/api/quick-charts?type=midday&location=${location}`);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch data: ${response.status}`);
-                }
                 data = await response.json();
+
+                // Check for session expiration
+                if (response.status === 401 || data.auth_required) {
+                    this.log('Session expired. Redirecting to login...', 'error');
+                    window.location.href = '/auth';
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(data.error || `Failed to fetch data: ${response.status}`);
+                }
                 this.log(`Received ${data.dates.length} data points for midday chart.`);
             } else {
                 // Daily Prices - multiple locations
@@ -381,10 +389,18 @@ const QuickCharts = {
                 const locations = this.compareList.map(item => item.val).join(',');
                 this.log(`Fetching daily prices chart for ${this.compareList.length} location(s)...`);
                 const response = await fetch(`/api/quick-charts?type=daily&locations=${locations}`);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch data: ${response.status}`);
-                }
                 data = await response.json();
+
+                // Check for session expiration
+                if (response.status === 401 || data.auth_required) {
+                    this.log('Session expired. Redirecting to login...', 'error');
+                    window.location.href = '/auth';
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(data.error || `Failed to fetch data: ${response.status}`);
+                }
                 const totalPoints = data.series.reduce((sum, s) => sum + s.dates.length, 0);
                 this.log(`Received ${totalPoints} total data points across ${data.series.length} series.`);
             }

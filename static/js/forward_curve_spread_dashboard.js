@@ -316,12 +316,18 @@ const ForwardCurveSpreadDashboard = {
             this.log(`API call: /api/forward-curve-spread-data?location1=${chart.location1}&location2=${chart.location2}&...`);
 
             const response = await fetch(url);
+            const data = await response.json();
 
-            if (!response.ok) {
-                throw new Error('Failed to fetch data from API');
+            // Check for session expiration
+            if (response.status === 401 || data.auth_required) {
+                this.log('Session expired. Redirecting to login...', 'error');
+                window.location.href = '/auth';
+                return;
             }
 
-            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to fetch data from API');
+            }
 
             if (data.error) {
                 throw new Error(data.error);

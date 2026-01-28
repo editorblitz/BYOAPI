@@ -4,7 +4,7 @@ Compares forward curves between two trade dates with heatmap visualization.
 """
 
 from flask import Blueprint, render_template, request, jsonify
-from auth import require_api_creds, ngi_request
+from auth import require_api_creds, require_api_creds_json, ngi_request
 
 forward_heatmap_bp = Blueprint('forward_heatmap', __name__)
 
@@ -17,7 +17,7 @@ def forward_heatmap_page():
 
 
 @forward_heatmap_bp.route('/api/forward-heatmap')
-@require_api_creds
+@require_api_creds_json
 def api_forward_heatmap():
     """
     API endpoint for Forward Heatmap comparison.

@@ -695,6 +695,13 @@ const App = {
                 throw new Error('Unexpected response from server. Please refresh your session.');
             }
 
+            // Check for session expiration
+            if (res.status === 401 || data.auth_required) {
+                this.log('Session expired. Redirecting to login...', 'error');
+                window.location.href = '/auth';
+                return;
+            }
+
             if(!res.ok) {
                 throw new Error(data.error || `API Error ${res.status}`);
             }

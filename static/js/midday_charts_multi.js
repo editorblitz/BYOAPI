@@ -364,10 +364,18 @@ const MiddayChartsMulti = {
             }
 
             const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch data: ${response.status}`);
-            }
             const data = await response.json();
+
+            // Check for session expiration
+            if (response.status === 401 || data.auth_required) {
+                this.log('Session expired. Redirecting to login...', 'error');
+                window.location.href = '/auth';
+                return;
+            }
+
+            if (!response.ok) {
+                throw new Error(data.error || `Failed to fetch data: ${response.status}`);
+            }
             const totalPoints = data.series.reduce((sum, s) => sum + s.dates.length, 0);
             this.log(`Received ${totalPoints} total data points across ${data.series.length} series.`);
 

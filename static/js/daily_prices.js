@@ -687,6 +687,13 @@ const App = {
                 throw new Error('Unexpected response from server. Please refresh your session.');
             }
 
+            // Check for session expiration
+            if (res.status === 401 || data.auth_required) {
+                this.log('Session expired. Redirecting to login...', 'error');
+                window.location.href = '/auth';
+                return;
+            }
+
             if(!res.ok) {
                 throw new Error(data.error || `API Error ${res.status}`);
             }
@@ -811,6 +818,57 @@ const App = {
             series: data.series.map(s => {
                 const isHidden = s.name && this.state.hiddenSeries.has(s.name);
                 const seriesColor = s.color || s.itemStyle?.color || s.lineStyle?.color;
+
+                // Handle custom range band series
+                if (s.type === 'custom' && s.renderItem === '__RANGE_BAND_RENDERER__') {
+                    const self = this;
+                    const seriesName = s.name;
+                    return {
+                        ...s,
+                        renderItem: (params, api) => {
+                            // Check hidden state dynamically
+                            const currentlyHidden = self.state.hiddenSeries.has(seriesName);
+
+                            // Get data point [index, min, max]
+                            const xValue = api.value(0);
+                            const lowValue = api.value(1);
+                            const highValue = api.value(2);
+
+                            if (lowValue == null || highValue == null || currentlyHidden) {
+                                return null;
+                            }
+
+                            // Convert to pixel coordinates
+                            const xPixel = api.coord([xValue, 0])[0];
+                            const lowPixel = api.coord([xValue, lowValue])[1];
+                            const highPixel = api.coord([xValue, highValue])[1];
+
+                            // Get next point for polygon width
+                            const nextXPixel = params.dataIndex < params.dataInsideLength - 1
+                                ? api.coord([xValue + 1, 0])[0]
+                                : xPixel + (xPixel - api.coord([xValue - 1, 0])[0]);
+
+                            return {
+                                type: 'rect',
+                                shape: {
+                                    x: xPixel,
+                                    y: highPixel,
+                                    width: nextXPixel - xPixel,
+                                    height: lowPixel - highPixel
+                                },
+                                style: api.style({
+                                    fill: 'rgba(70, 130, 180, 0.3)'
+                                })
+                            };
+                        },
+                        itemStyle: {
+                            ...s.itemStyle,
+                            opacity: isHidden ? 0 : 1
+                        },
+                        z: s.z || 1
+                    };
+                }
+
                 return {
                     ...s,
                     color: seriesColor,
@@ -1015,7 +1073,15 @@ const App = {
                 // Get data for this series
                 const data = s.data || [];
                 data.forEach(val => {
-                    if (val !== null && val !== undefined && typeof val === 'number') {
+                    // Handle custom series data format: [index, min, max]
+                    if (Array.isArray(val)) {
+                        if (val[1] !== null && val[1] !== undefined) {
+                            minVal = Math.min(minVal, val[1]);
+                        }
+                        if (val[2] !== null && val[2] !== undefined) {
+                            maxVal = Math.max(maxVal, val[2]);
+                        }
+                    } else if (val !== null && val !== undefined && typeof val === 'number') {
                         minVal = Math.min(minVal, val);
                         maxVal = Math.max(maxVal, val);
                     }

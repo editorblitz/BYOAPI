@@ -6,7 +6,7 @@ Shows spreads across contract months (curve view) rather than over time.
 
 from datetime import datetime
 from flask import Blueprint, render_template, request, jsonify
-from auth import require_api_creds, ngi_request
+from auth import require_api_creds, require_api_creds_json, ngi_request
 
 forward_curve_spread_dashboard_bp = Blueprint('forward_curve_spread_dashboard', __name__)
 
@@ -19,7 +19,7 @@ def forward_curve_spread_dashboard_page():
 
 
 @forward_curve_spread_dashboard_bp.route('/api/forward-curve-spread-data')
-@require_api_creds
+@require_api_creds_json
 def api_forward_curve_spread_data():
     """
     Fetch forward curve spread data between two locations.

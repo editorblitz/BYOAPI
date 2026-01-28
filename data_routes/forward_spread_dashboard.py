@@ -6,7 +6,7 @@ Uses forwardHistoricalData.json for efficient bulk data fetching.
 
 from datetime import datetime, timedelta
 from flask import Blueprint, render_template, request, jsonify
-from auth import require_api_creds, ngi_request
+from auth import require_api_creds, require_api_creds_json, ngi_request
 
 forward_spread_dashboard_bp = Blueprint('forward_spread_dashboard', __name__)
 
@@ -19,7 +19,7 @@ def forward_spread_dashboard_page():
 
 
 @forward_spread_dashboard_bp.route('/api/forward-spread-data')
-@require_api_creds
+@require_api_creds_json
 def api_forward_spread_data():
     """
     Fetch forward spread data between two locations over a date range.
@@ -197,9 +197,7 @@ def fetch_historical_forward_data(location_code, contract, start_date, end_date)
                 result['location_name'] = location_data.get('Location', location_code)
 
     except Exception as e:
-        print(f"Error fetching historical forward data for {location_code}: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        pass  # Silently handle errors - logged elsewhere if needed
 
     return result
 

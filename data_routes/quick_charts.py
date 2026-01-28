@@ -6,7 +6,7 @@ Charts are 750x400px and export as WebP format at 828x447px.
 
 from datetime import datetime, timedelta
 from flask import Blueprint, render_template, request, jsonify
-from auth import require_api_creds, ngi_request
+from auth import require_api_creds, require_api_creds_json, ngi_request
 
 quick_charts_bp = Blueprint('quick_charts', __name__)
 
@@ -46,8 +46,15 @@ def daily_spot_charts_page():
     return render_template('daily_spot_charts.html')
 
 
-@quick_charts_bp.route('/api/quick-charts')
+@quick_charts_bp.route('/daily-highlow-charts')
 @require_api_creds
+def daily_highlow_charts_page():
+    """Render the Daily High/Low Charts page."""
+    return render_template('daily_highlow_charts.html')
+
+
+@quick_charts_bp.route('/api/quick-charts')
+@require_api_creds_json
 def api_quick_charts():
     """
     API endpoint for Quick Charts.
@@ -181,6 +188,38 @@ def api_quick_charts():
 
             return jsonify(payload)
 
+        elif chart_type == 'daily-highlow':
+            # Daily High/Low - single location with high, low, average
+            location = request.args.get('location')
+
+            if not location:
+                return jsonify({'error': 'location parameter is required for daily-highlow chart'}), 400
+
+            params = {
+                'location': location,
+                'start_date': start_date.isoformat(),
+                'end_date': end_date.isoformat()
+            }
+
+            raw = ngi_request('dailyHistoricalData.json', params=params)
+
+            # Process the columnar data with highs and lows
+            records = process_daily_data_with_highlow(raw)
+
+            if not records:
+                return jsonify({'error': 'No data found for the specified location and date range'}), 404
+
+            # Return formatted data
+            payload = {
+                'dates': [row['trade_date'] for row in records],
+                'highs': [row['high'] for row in records],
+                'lows': [row['low'] for row in records],
+                'averages': [row['average'] for row in records],
+                'location_name': records[0]['location_name'] if records else 'Unknown Location'
+            }
+
+            return jsonify(payload)
+
         else:
             return jsonify({'error': f'Invalid chart type: {chart_type}'}), 400
 
@@ -265,6 +304,65 @@ def process_daily_data(raw_data):
             'trade_date': raw_data.get('trade_dates', {}).get(idx, ''),
             'location_name': raw_data.get('location_names', {}).get(idx, 'Unknown'),
             'pointcode': raw_data.get('pointcodes', {}).get(idx, ''),
+            'average': avg
+        }
+
+        records.append(record)
+
+    # Sort by trade_date
+    records.sort(key=lambda x: x.get('trade_date', ''))
+
+    return records
+
+
+def process_daily_data_with_highlow(raw_data):
+    """
+    Process NGI daily prices columnar data into records with high, low, and average.
+
+    Args:
+        raw_data: NGI API response in columnar format
+
+    Returns:
+        Array of records sorted by trade_date with high, low, average
+    """
+    if not raw_data or not isinstance(raw_data, dict):
+        return []
+
+    if 'averages' not in raw_data or 'trade_dates' not in raw_data:
+        return []
+
+    data_length = len(raw_data.get('averages', {}))
+    records = []
+
+    for i in range(data_length):
+        idx = str(i)
+
+        # Parse numeric values
+        avg = raw_data.get('averages', {}).get(idx)
+        high = raw_data.get('highs', {}).get(idx)
+        low = raw_data.get('lows', {}).get(idx)
+
+        try:
+            avg = float(avg) if avg is not None else None
+        except (ValueError, TypeError):
+            avg = None
+
+        try:
+            high = float(high) if high is not None else None
+        except (ValueError, TypeError):
+            high = None
+
+        try:
+            low = float(low) if low is not None else None
+        except (ValueError, TypeError):
+            low = None
+
+        record = {
+            'trade_date': raw_data.get('trade_dates', {}).get(idx, ''),
+            'location_name': raw_data.get('location_names', {}).get(idx, 'Unknown'),
+            'pointcode': raw_data.get('pointcodes', {}).get(idx, ''),
+            'high': high,
+            'low': low,
             'average': avg
         }
 

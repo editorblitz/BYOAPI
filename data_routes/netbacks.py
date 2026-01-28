@@ -7,7 +7,7 @@ Compares TTF (Europe) and JKM (Asia) netbacks to Henry Hub.
 import json
 from datetime import datetime, timedelta
 from flask import Blueprint, render_template, request, jsonify, Response, stream_with_context
-from auth import require_api_creds, ngi_request
+from auth import require_api_creds, require_api_creds_json, ngi_request
 
 netbacks_bp = Blueprint('netbacks', __name__)
 
@@ -29,7 +29,7 @@ def netbacks_page():
 
 
 @netbacks_bp.route('/api/netbacks')
-@require_api_creds
+@require_api_creds_json
 def api_netbacks():
     """
     API endpoint for netbacks data.
@@ -66,6 +66,21 @@ def api_netbacks():
             if not contract:
                 raise ValueError('contract is required for time_series mode')
 
+            # Validate date formats
+            try:
+                start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+                end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            except ValueError:
+                raise ValueError('Dates must be in YYYY-MM-DD format')
+
+            # Validate date range (max 365 days to prevent excessive API calls)
+            MAX_DAYS = 365
+            days_diff = (end_dt - start_dt).days
+            if days_diff < 0:
+                raise ValueError('end_date must be after start_date')
+            if days_diff > MAX_DAYS:
+                raise ValueError(f'Date range cannot exceed {MAX_DAYS} days')
+
             payload = process_time_series_view(contract, start_date, end_date, show_spreads)
 
         else:
@@ -80,7 +95,7 @@ def api_netbacks():
 
 
 @netbacks_bp.route('/api/netback-latest-date')
-@require_api_creds
+@require_api_creds_json
 def api_netback_latest_date():
     """Fetch the latest available issue date from the NGI LNG API."""
     try:
@@ -94,7 +109,6 @@ def api_netback_latest_date():
 
         if not issue_date:
             # Fallback: try recent dates going back 90 days to find latest available
-            print("Searching for latest available netback date...")
             today = datetime.now()
             for days_back in range(0, 90):
                 check_date = today - timedelta(days=days_back)
@@ -106,16 +120,9 @@ def api_netback_latest_date():
                         data_section = test_data.get('data', {})
                         if data_section and len(data_section) > 0:
                             issue_date = check_date_str
-                            print(f"✓ Found latest netback date: {issue_date} (went back {days_back} days)")
                             break
-                except Exception as e:
-                    # Only print non-404 errors
-                    if '404' not in str(e):
-                        print(f"  Error checking {check_date_str}: {e}")
+                except Exception:
                     continue
-
-            if not issue_date:
-                print("WARNING: No netback data found in last 90 days!")
 
         return jsonify({
             'success': True,
@@ -126,7 +133,7 @@ def api_netback_latest_date():
 
 
 @netbacks_bp.route('/api/netbacks-stream')
-@require_api_creds
+@require_api_creds_json
 def api_netbacks_stream():
     """
     Server-Sent Events endpoint for streaming time series fetch progress.
@@ -438,20 +445,16 @@ def fetch_arb_curves_data(issue_date):
         data = ngi_request('lngNetbackDatafeed.json', params=params)
         if data:
             return data
-    except Exception as e:
-        # 404 on weekends/holidays is expected - don't log as error
-        if '404' not in str(e):
-            print(f"lngNetbackDatafeed error for {issue_date}: {e}")
+    except Exception:
+        pass  # 404 on weekends/holidays is expected
 
     # Fallback to arb curves
     try:
         data = ngi_request('lngArbCurvesDatafeed.json', params=params)
         if data:
             return data
-    except Exception as e:
-        # 404 on weekends/holidays is expected - don't log as error
-        if '404' not in str(e):
-            print(f"lngArbCurvesDatafeed error for {issue_date}: {e}")
+    except Exception:
+        pass  # 404 on weekends/holidays is expected
 
     return None
 
@@ -501,36 +504,8 @@ def process_forward_curve_view(issue_date, show_spreads=True):
     # Fetch Henry Hub curve for comparison
     try:
         hh_curve = fetch_henry_hub_curve(issue_date)
-        print(f"HH: Fetched {len(hh_curve)} total contracts")
-        if hh_curve:
-            hh_contracts = sorted(list(hh_curve.keys()))[:15]
-            print(f"HH: First 15 contracts: {hh_contracts}")
-    except Exception as e:
-        print(f"Error fetching HH curve: {e}")
+    except Exception:
         hh_curve = {}
-
-    # Debug: print response structure
-    print(f"\n=== NETBACK DATA for {issue_date} ===")
-    print(f"Type: {type(arb_data)}")
-    if isinstance(arb_data, dict):
-        print(f"Top-level Keys: {list(arb_data.keys())}")
-        # Print more detail about the data structure
-        data_section = arb_data.get('data', arb_data)
-        if isinstance(data_section, dict):
-            print(f"Data section keys: {list(data_section.keys())[:10]}")
-            # Show first entry structure
-            for key in list(data_section.keys())[:2]:
-                val = data_section[key]
-                if isinstance(val, dict):
-                    print(f"  '{key}' keys: {list(val.keys())}")
-                elif isinstance(val, list) and len(val) > 0:
-                    print(f"  '{key}' is list with {len(val)} items, first: {val[0]}")
-                else:
-                    print(f"  '{key}': {val}")
-        elif isinstance(data_section, list) and len(data_section) > 0:
-            print(f"Data is a list with {len(data_section)} items")
-            print(f"First item: {data_section[0]}")
-    print("=" * 50)
 
     # Parse the netback data
     # Structure: data['LNETBACKTTF'] = {Pointcode, Name, Contracts: [...], Prices: [...]}
@@ -549,7 +524,6 @@ def process_forward_curve_view(issue_date, show_spreads=True):
             if contracts and prices:
                 # Convert prices to floats (API returns strings)
                 ttf_netbacks = {c: parse_price(p) for c, p in zip(contracts, prices)}
-                print(f"TTF: Found {len(ttf_netbacks)} contracts: {contracts}")
 
         # JKM Netback - look for LNETBACKJPNKOR (Japan/Korea Marker)
         jkm_data = data_section.get('LNETBACKJPNKOR', {})
@@ -559,7 +533,6 @@ def process_forward_curve_view(issue_date, show_spreads=True):
             if contracts and prices:
                 # Convert prices to floats (API returns strings)
                 jkm_netbacks = {c: parse_price(p) for c, p in zip(contracts, prices)}
-                print(f"JKM: Found {len(jkm_netbacks)} contracts: {contracts}")
 
     # Build contract list based on what netback data exists
     # Only show months where we have netback data (TTF or JKM)
@@ -577,10 +550,6 @@ def process_forward_curve_view(issue_date, show_spreads=True):
         sorted_contracts = sorted_contracts[:12]
 
     formatted_contracts = [format_contract_month(c) for c in sorted_contracts]
-
-    print(f"Displaying {len(sorted_contracts)} contracts based on netback availability")
-    if sorted_contracts:
-        print(f"  First contract: {sorted_contracts[0]}, Last: {sorted_contracts[-1]}")
 
     # Build series
     series = []
@@ -717,26 +686,13 @@ def process_time_series_view(contract_month, start_date, end_date, show_spreads=
     """
     # Generate list of dates to fetch
     dates_to_fetch = generate_date_list(start_date, end_date)
-    total_dates = len(dates_to_fetch)
-
-    print(f"\n{'='*60}")
-    print(f"NETBACK TIME SERIES: Fetching {total_dates} dates")
-    print(f"  Contract: {contract_month} | Range: {start_date} to {end_date}")
-    print(f"{'='*60}")
 
     ttf_series = {}
     jkm_series = {}
     hh_series = {}
 
-    # Progress tracking
-    dates_with_data = 0
-    dates_skipped = 0
-
     # Fetch data for each date
-    for idx, date_str in enumerate(dates_to_fetch, 1):
-        # Progress update every date
-        progress_pct = (idx / total_dates) * 100
-        print(f"  [{idx:3d}/{total_dates}] ({progress_pct:5.1f}%) Fetching {date_str}...", end=" ")
+    for date_str in dates_to_fetch:
 
         try:
             # Fetch netback data (returns None for weekends/holidays)
@@ -778,36 +734,11 @@ def process_time_series_view(contract_month, start_date, end_date, show_spreads=
                 hh_val = hh_curve.get(contract_month)
                 if hh_val is not None:
                     hh_series[date_str] = hh_val
-                    found_data = True
-            except Exception as hh_err:
-                # 404 on weekends/holidays is expected
-                if '404' not in str(hh_err):
-                    print(f"HH error: {hh_err}")
+            except Exception:
+                pass  # 404 on weekends/holidays is expected
 
-            # Log result
-            if found_data:
-                ttf_val = ttf_series.get(date_str, '-')
-                jkm_val = jkm_series.get(date_str, '-')
-                hh_val = hh_series.get(date_str, '-')
-                print(f"✓ TTF={ttf_val}, JKM={jkm_val}, HH={hh_val}")
-                dates_with_data += 1
-            else:
-                print("- no data (weekend/holiday)")
-                dates_skipped += 1
-
-        except Exception as e:
-            # Only log unexpected errors (not 404s from weekends/holidays)
-            if '404' not in str(e):
-                print(f"ERROR: {e}")
-            else:
-                print("- no data (404)")
-                dates_skipped += 1
+        except Exception:
             continue
-
-    # Summary
-    print(f"{'='*60}")
-    print(f"FETCH COMPLETE: {dates_with_data} dates with data, {dates_skipped} skipped")
-    print(f"{'='*60}\n")
 
     # Build unified date list from what we got
     all_dates = set()

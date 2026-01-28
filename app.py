@@ -205,6 +205,14 @@ def dashboard():
             'image': 'daily-spot-charts.png'
         },
         {
+            'name': 'Daily High/Low Charts',
+            'description': 'Generate daily price range charts showing high, low, and average with legend',
+            'url': url_for('quick_charts.daily_highlow_charts_page'),
+            'icon': 'chart-bar',
+            'category': 'charts',
+            'image': 'daily-highlow-charts.png'
+        },
+        {
             'name': 'Daily Spot Charts - Multi',
             'description': 'Compare multiple locations on publication-ready daily price charts',
             'url': url_for('quick_charts.daily_price_charts_page'),
@@ -238,6 +246,6 @@ def internal_error(e):
 # ============= MAIN =============
 
 if __name__ == '__main__':
-    # Run with debug=False in production
-    debug_mode = os.environ.get('FLASK_ENV', 'development') == 'development'
+    # SECURITY: Default to debug=False. Only enable with explicit FLASK_DEBUG=1
+    debug_mode = os.environ.get('FLASK_DEBUG', '0') == '1'
     app.run(host='0.0.0.0', port=5000, debug=debug_mode)

@@ -5,7 +5,7 @@ Provides API endpoints and page for LNG flow data visualization.
 
 from datetime import datetime, timedelta
 from flask import Blueprint, render_template, request, jsonify
-from auth import require_api_creds, ngi_request
+from auth import require_api_creds, require_api_creds_json, ngi_request
 
 lng_flows_bp = Blueprint('lng_flows', __name__)
 
@@ -35,7 +35,7 @@ def lng_flows_page():
 
 
 @lng_flows_bp.route('/api/lng-flows')
-@require_api_creds
+@require_api_creds_json
 def api_lng_flows():
     """
     API endpoint for LNG flows data.

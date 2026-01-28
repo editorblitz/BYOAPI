@@ -343,12 +343,18 @@ const SpreadsApp = {
 
         try {
             const response = await fetch(`/api/spreads?${params}`);
+            const result = await response.json();
 
-            if (!response.ok) {
-                throw new Error(`API request failed with status ${response.status}`);
+            // Check for session expiration
+            if (response.status === 401 || result.auth_required) {
+                this.log('Session expired. Redirecting to login...', 'error');
+                window.location.href = '/auth';
+                return;
             }
 
-            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || `API request failed with status ${response.status}`);
+            }
 
             if (result.success && result.data) {
                 this.state.rawData = result.data;

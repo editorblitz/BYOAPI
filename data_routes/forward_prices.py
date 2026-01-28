@@ -5,7 +5,7 @@ Provides API endpoints and page for forward price curve visualization.
 
 from datetime import datetime
 from flask import Blueprint, render_template, request, jsonify
-from auth import require_api_creds, ngi_request
+from auth import require_api_creds, require_api_creds_json, ngi_request
 
 forward_prices_bp = Blueprint('forward_prices', __name__)
 
@@ -18,7 +18,7 @@ def forward_prices_page():
 
 
 @forward_prices_bp.route('/api/forward-prices')
-@require_api_creds
+@require_api_creds_json
 def api_forward_prices():
     """
     Main API endpoint for the Forward Prices tool.
@@ -79,7 +79,7 @@ def api_forward_prices():
 
 
 @forward_prices_bp.route('/api/forward-locations')
-@require_api_creds
+@require_api_creds_json
 def api_forward_locations():
     """Fetch available forward locations from NGI API."""
     try:
@@ -90,7 +90,7 @@ def api_forward_locations():
 
 
 @forward_prices_bp.route('/api/forward-latest-date')
-@require_api_creds
+@require_api_creds_json
 def api_forward_latest_date():
     """Fetch the latest available issue date from the NGI API.
 
@@ -227,7 +227,6 @@ def process_single_price_view(location_code, issue_dates, price_type='fixed'):
 
         except Exception as e:
             # Skip dates that don't have data available
-            print(f"Warning: Could not fetch data for {issue_date}: {str(e)}")
             failed_dates.append(issue_date)
             continue
 
@@ -411,12 +410,6 @@ def process_by_contract_view(contract_month, location_codes, start_date, end_dat
             hist_data = ngi_request('forwardHistoricalData.json', params=params)
 
             # DEBUG: Print the response to see structure
-            print(f"\n=== FORWARD HISTORICAL DATA for {location_code} ===")
-            print(f"Type: {type(hist_data)}")
-            print(f"Keys (if dict): {hist_data.keys() if isinstance(hist_data, dict) else 'N/A'}")
-            print(f"First few items: {str(hist_data)[:500]}")
-            print("=" * 50)
-
             # The response structure might be a list of records or nested dict
             # Let's handle all cases
 
@@ -556,7 +549,6 @@ def process_by_contract_view(contract_month, location_codes, start_date, end_dat
 
         except Exception as e:
             # If historical endpoint fails for this location, skip it
-            print(f"Error fetching historical data for {location_code}: {str(e)}")
             continue
 
     # If we got no data, return empty structure

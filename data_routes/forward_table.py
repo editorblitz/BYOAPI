@@ -5,7 +5,7 @@ Shows all locations for a single trade date.
 """
 
 from flask import Blueprint, render_template, request, jsonify
-from auth import require_api_creds, ngi_request
+from auth import require_api_creds, require_api_creds_json, ngi_request
 
 forward_table_bp = Blueprint('forward_table', __name__)
 
@@ -18,7 +18,7 @@ def forward_table_page():
 
 
 @forward_table_bp.route('/api/forward-table')
-@require_api_creds
+@require_api_creds_json
 def api_forward_table():
     """
     API endpoint for Forward Table.

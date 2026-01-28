@@ -111,7 +111,7 @@ def require_api_creds_json(f):
 def get_decrypted_credentials():
     """
     Get decrypted NGI credentials from the session.
-    Returns (email, api_key) tuple or (None, None) if unavailable.
+    Returns (email, api_key) tuple or (None, None) if unavailable or decryption fails.
     """
     email_enc = session.get('ngi_email_enc')
     key_enc = session.get('ngi_key_enc')
@@ -119,10 +119,20 @@ def get_decrypted_credentials():
     if not email_enc or not key_enc:
         return None, None
 
-    email = decrypt_value(email_enc)
-    api_key = decrypt_value(key_enc)
+    try:
+        email = decrypt_value(email_enc)
+        api_key = decrypt_value(key_enc)
 
-    return email, api_key
+        if not email or not api_key:
+            # Decryption succeeded but returned empty - clear corrupted session
+            session.clear()
+            return None, None
+
+        return email, api_key
+    except Exception:
+        # Decryption failed (key changed, corrupted data, etc.) - clear session
+        session.clear()
+        return None, None
 
 
 def ngi_request(path: str, method: str = 'GET', params: dict = None, json_data: dict = None):
@@ -171,6 +181,21 @@ def ngi_request(path: str, method: str = 'GET', params: dict = None, json_data: 
             raise ValueError(f"Unsupported HTTP method: {method}")
 
         response.raise_for_status()
+
+        # Check content type and handle non-JSON responses
+        content_type = response.headers.get('Content-Type', '')
+        if not response.content:
+            raise Exception("NGI API returned empty response")
+
+        if 'application/json' not in content_type:
+            # Try to parse anyway, but provide better error if it fails
+            try:
+                return response.json()
+            except ValueError:
+                # Truncate response for error message
+                preview = response.text[:200] if response.text else '(empty)'
+                raise Exception(f"NGI API returned non-JSON response: {preview}")
+
         return response.json()
 
     except requests.RequestException as e:

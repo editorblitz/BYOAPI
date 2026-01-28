@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 from flask import Blueprint, render_template, request, jsonify
 
-from auth import require_api_creds, ngi_request
+from auth import require_api_creds, require_api_creds_json, ngi_request
 
 daily_prices_bp = Blueprint('daily_prices', __name__)
 
@@ -20,7 +20,7 @@ def daily_prices_page():
 
 
 @daily_prices_bp.route('/api/daily-prices')
-@require_api_creds
+@require_api_creds_json
 def api_daily_prices():
     """Main API endpoint for the Daily Prices tool."""
     mode = request.args.get('mode', 'standard').lower()
@@ -430,38 +430,27 @@ def process_seasonality_view(current_records, previous_records, year, historical
     series = []
     has_range = any(v is not None for v in range_min) or any(v is not None for v in range_max)
     if has_range:
-        # Calculate the range difference for stacked area chart
-        range_diff = []
+        # For proper band rendering that works with negative values,
+        # we use a custom series type with data encoding for [x, low, high]
+        # Format each point as [index, min_value, max_value]
+        band_data = []
         for i in range(len(range_min)):
-            if range_min[i] is not None and range_max[i] is not None:
-                range_diff.append(range_max[i] - range_min[i])
+            min_val = range_min[i]
+            max_val = range_max[i]
+            if min_val is not None and max_val is not None:
+                band_data.append([i, min_val, max_val])
             else:
-                range_diff.append(None)
+                band_data.append([i, None, None])
 
-        # Bottom of the range (invisible base for stacking)
-        series.append({
-            'name': '',
-            'type': 'line',
-            'data': range_min,
-            'lineStyle': {'opacity': 0},
-            'areaStyle': {'opacity': 0},
-            'stack': 'range',
-            'symbol': 'none',
-            'silent': True,
-            'legendHoverLink': False,
-            'z': 0
-        })
-        # Top of the range (visible band)
+        # Use a custom series for the range band
         series.append({
             'name': '5-Year Range',
-            'type': 'line',
-            'data': range_diff,
-            'lineStyle': {'opacity': 0},
-            'areaStyle': {'color': 'rgba(70, 130, 180, 0.3)', 'opacity': 1},
-            'itemStyle': {'color': 'rgba(70, 130, 180, 0.6)'},
-            'stack': 'range',
-            'symbol': 'none',
-            'z': 1
+            'type': 'custom',
+            'renderItem': '__RANGE_BAND_RENDERER__',  # Replaced in frontend
+            'itemStyle': {'color': 'rgba(70, 130, 180, 0.3)'},
+            'data': band_data,
+            'z': 1,
+            'silent': True
         })
 
     series.append({

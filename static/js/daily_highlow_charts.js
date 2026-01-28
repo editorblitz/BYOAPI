@@ -1,23 +1,20 @@
 /**
- * Daily Price Charts - Publication-ready NGI multi-location comparison charts
- * Generates multi-location comparison charts at 750x400px, exports as 828x447px WebP
+ * Daily High/Low Charts - Publication-ready NGI single-location daily price charts
+ * Shows High, Low, and Average lines with legend at top
+ * Generates charts at 750x400px, exports as 828x447px WebP
  */
 
-const DailyPriceCharts = {
+const DailyHighLowCharts = {
     chart: null,
-    compareList: [], // For multi-location comparison
+    currentLocationName: '',
+    currentEndDate: '',
 
-    // Color palette for multi-line charts (up to 8 colors)
-    colorPalette: [
-        '#1d4063',  // Dark Navy Blue
-        '#37b4ee',  // Sky Blue
-        '#fabc28',  // Gold/Amber
-        '#dc3545',  // Red
-        '#28a745',  // Green
-        '#6f42c1',  // Purple
-        '#fd7e14',  // Orange
-        '#20c997'   // Teal
-    ],
+    // Color palette for High, Low, Average (shades of blue)
+    colorPalette: {
+        high: '#37b4ee',    // Light Sky Blue for High
+        low: '#6b9dc2',     // Medium Steel Blue for Low
+        average: '#1d4063'  // Dark Navy Blue for Average
+    },
 
     // Location data
     locations: {
@@ -209,7 +206,7 @@ const DailyPriceCharts = {
         this.setupDropdowns();
         this.bindEvents();
         this.setupLogToggle();
-        this.log('Daily Spot Charts - Multi system initialized.');
+        this.log('Daily High/Low Charts system initialized.');
     },
 
     log: function(msg) {
@@ -278,70 +275,15 @@ const DailyPriceCharts = {
 
     bindEvents: function() {
         document.getElementById('regionSelect').addEventListener('change', () => this.updateLocations());
-        document.getElementById('addToCompareBtn').addEventListener('click', () => {
-            const sel = document.getElementById('locationSelect');
-            if(sel.selectedIndex >= 0) {
-                const opt = sel.options[sel.selectedIndex];
-                const name = opt.textContent;
-                this.addToCompare(opt.value, name);
-            }
-        });
         document.getElementById('generateBtn').addEventListener('click', () => this.handleGenerate());
         document.getElementById('downloadBtn').addEventListener('click', () => this.downloadChart());
         document.getElementById('updateChartBtn').addEventListener('click', () => this.handleGenerate());
     },
 
-    addToCompare: function(val, name) {
-        if(this.compareList.some(i => i.val === val)) return;
-
-        this.compareList.push({val, name});
-        this.renderCompareList();
-        this.log(`Added <strong>${name}</strong> to comparison list.`);
-    },
-
-    removeFromCompare: function(val) {
-        const item = this.compareList.find(i => i.val === val);
-        this.compareList = this.compareList.filter(i => i.val !== val);
-        this.renderCompareList();
-        if(item) {
-            this.log(`Removed <strong>${item.name}</strong> from comparison list.`);
-        }
-    },
-
-    renderCompareList: function() {
-        const container = document.getElementById('compareListContainer');
-        container.innerHTML = '';
-
-        if(this.compareList.length === 0) {
-            container.innerHTML = '<p class="text-xs text-gray-500 italic">No locations added.</p>';
-            return;
-        }
-
-        this.compareList.forEach(item => {
-            const div = document.createElement('div');
-            div.className = 'flex justify-between items-center bg-white p-2 border border-gray-300 text-sm';
-
-            const label = document.createElement('span');
-            label.className = 'truncate pr-2';
-            label.textContent = item.name;
-
-            const removeBtn = document.createElement('button');
-            removeBtn.className = 'text-gray-500 hover:text-red-600 font-bold px-1';
-            removeBtn.textContent = '×';
-            removeBtn.addEventListener('click', () => this.removeFromCompare(item.val));
-
-            div.appendChild(label);
-            div.appendChild(removeBtn);
-            container.appendChild(div);
-        });
-    },
-
     handleGenerate: async function() {
         try {
-            if (this.compareList.length === 0) {
-                alert('Please add at least one location to compare.');
-                return;
-            }
+            const location = document.getElementById('locationSelect').value;
+            this.currentLocationName = document.querySelector('#locationSelect option:checked').textContent;
 
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
@@ -352,15 +294,13 @@ const DailyPriceCharts = {
                 return;
             }
 
-            const locations = this.compareList.map(item => item.val).join(',');
-
-            // Build URL with optional date params
-            let url = `/api/quick-charts?type=daily&locations=${locations}`;
+            // Build URL with optional date params - use daily-highlow type
+            let url = `/api/quick-charts?type=daily-highlow&location=${location}`;
             if (startDate && endDate) {
                 url += `&start_date=${startDate}&end_date=${endDate}`;
-                this.log(`Fetching daily prices for ${this.compareList.length} location(s) from ${startDate} to ${endDate}...`);
+                this.log(`Fetching high/low chart for ${this.currentLocationName} from ${startDate} to ${endDate}...`);
             } else {
-                this.log(`Fetching daily prices for ${this.compareList.length} location(s) (last 12 months)...`);
+                this.log(`Fetching high/low chart for ${this.currentLocationName} (last 12 months)...`);
             }
 
             const response = await fetch(url);
@@ -376,21 +316,21 @@ const DailyPriceCharts = {
             if (!response.ok) {
                 throw new Error(data.error || `Failed to fetch data: ${response.status}`);
             }
-            const totalPoints = data.series.reduce((sum, s) => sum + s.dates.length, 0);
-            this.log(`Received ${totalPoints} total data points across ${data.series.length} series.`);
+
+            this.log(`Received ${data.dates.length} data points with high/low/average.`);
 
             this.renderChart(data);
-            this.log(`Chart rendered: <strong>750×400px</strong> display (aspect ratio 15:8) • Exports as <strong>828×447px WebP</strong>`);
+            this.log(`Chart rendered: <strong>750x400px</strong> display (aspect ratio 15:8) - Exports as <strong>828x447px WebP</strong>`);
 
             // Show download button and date range section
             document.getElementById('downloadBtn').classList.remove('hidden');
             document.getElementById('dateRangeSection').classList.remove('hidden');
 
             // Update date inputs to show actual data range
-            if (data.series && data.series.length > 0 && data.series[0].dates.length > 0) {
-                const dates = data.series[0].dates;
-                document.getElementById('startDate').value = dates[0];
-                document.getElementById('endDate').value = dates[dates.length - 1];
+            if (data.dates && data.dates.length > 0) {
+                document.getElementById('startDate').value = data.dates[0];
+                document.getElementById('endDate').value = data.dates[data.dates.length - 1];
+                this.currentEndDate = data.dates[data.dates.length - 1];
             }
         } catch (error) {
             console.error('Error fetching chart data:', error);
@@ -410,29 +350,13 @@ const DailyPriceCharts = {
         // Create fresh chart instance
         this.chart = echarts.init(chartDom);
 
-        // Check if we have valid data
-        if (!data || !data.series || data.series.length === 0) {
-            alert('No data available for the selected locations. Please try different locations or check your API credentials.');
-            return;
-        }
+        const dates = data.dates;
+        const highs = data.highs;
+        const lows = data.lows;
+        const averages = data.averages;
 
-        // Use the data as-is (API returns the requested date range)
-        const limitedSeries = data.series.map(s => ({
-            location_name: s.location_name,
-            dates: s.dates,
-            averages: s.averages
-        }));
-
-        // Use dates from first series
-        const limitedDates = limitedSeries[0].dates;
-
-        // Calculate Y-axis bounds across all series
-        let allPrices = [];
-        limitedSeries.forEach(s => {
-            const validPrices = s.averages.filter(price => !isNaN(price) && price !== null);
-            allPrices = allPrices.concat(validPrices);
-        });
-
+        // Calculate Y-axis bounds from all series
+        const allPrices = [...highs, ...lows, ...averages].filter(p => !isNaN(p) && p !== null);
         const minPrice = Math.min(...allPrices);
         const maxPrice = Math.max(...allPrices);
 
@@ -441,7 +365,7 @@ const DailyPriceCharts = {
         const adjustedMaxPrice = Math.ceil(maxPrice / interval) * interval;
 
         // Reformat dates to DD-Mon-YYYY
-        const reformattedDates = limitedDates.map(dateStr => {
+        const reformattedDates = dates.map(dateStr => {
             const [year, month, day] = dateStr.split('-');
             const monthMap = {
                 '01': 'Jan', '02': 'Feb', '03': 'Mar', '04': 'Apr', '05': 'May', '06': 'Jun',
@@ -450,28 +374,42 @@ const DailyPriceCharts = {
             return `${day}-${monthMap[month]}-${year}`;
         });
 
-        // Build series with colors from palette
-        const series = limitedSeries.map((s, idx) => {
-            const seriesColor = this.colorPalette[idx % this.colorPalette.length];
-            return {
-                name: s.location_name,
+        // Build the three series
+        const series = [
+            {
+                name: 'High',
                 type: 'line',
-                data: s.averages.map(value => isNaN(value) || value === null ? null : value),
-                color: seriesColor,
-                itemStyle: {
-                    color: seriesColor
-                },
-                lineStyle: {
-                    color: seriesColor,
-                    width: 3
-                },
+                data: highs.map(value => isNaN(value) || value === null ? null : value),
+                color: this.colorPalette.high,
+                itemStyle: { color: this.colorPalette.high },
+                lineStyle: { color: this.colorPalette.high, width: 2, type: 'dotted' },
                 symbol: 'none',
                 connectNulls: false
-            };
-        });
+            },
+            {
+                name: 'Low',
+                type: 'line',
+                data: lows.map(value => isNaN(value) || value === null ? null : value),
+                color: this.colorPalette.low,
+                itemStyle: { color: this.colorPalette.low },
+                lineStyle: { color: this.colorPalette.low, width: 2, type: 'dotted' },
+                symbol: 'none',
+                connectNulls: false
+            },
+            {
+                name: 'Average',
+                type: 'line',
+                data: averages.map(value => isNaN(value) || value === null ? null : value),
+                color: this.colorPalette.average,
+                itemStyle: { color: this.colorPalette.average },
+                lineStyle: { color: this.colorPalette.average, width: 3 },
+                symbol: 'none',
+                connectNulls: false
+            }
+        ];
 
         const option = {
-            color: this.colorPalette,
+            color: [this.colorPalette.high, this.colorPalette.low, this.colorPalette.average],
             toolbox: {
                 show: false
             },
@@ -479,7 +417,7 @@ const DailyPriceCharts = {
                 fontFamily: 'Arial'
             },
             title: [{
-                text: "NGI's Daily Natural Gas Prices",
+                text: `NGI's ${data.location_name} Daily Gas Price`,
                 left: '3%',
                 top: '10',
                 textStyle: {
@@ -499,7 +437,7 @@ const DailyPriceCharts = {
                 icon: 'rect',
                 itemWidth: 25,
                 itemHeight: 3,
-                data: limitedSeries.map(s => s.location_name)
+                data: ['High', 'Low', 'Average']
             },
             graphic: [
                 {
@@ -552,6 +490,15 @@ const DailyPriceCharts = {
                 trigger: 'axis',
                 axisPointer: {
                     type: 'cross'
+                },
+                formatter: function(params) {
+                    let result = `<strong>${params[0].axisValue}</strong><br/>`;
+                    params.forEach(param => {
+                        if (param.value !== null && param.value !== undefined) {
+                            result += `<span style="color:${param.color}">\u25CF</span> ${param.seriesName}: $${param.value.toFixed(3)}<br/>`;
+                        }
+                    });
+                    return result;
                 }
             },
             grid: {
@@ -568,7 +515,7 @@ const DailyPriceCharts = {
                 axisLabel: {
                     rotate: 45,
                     interval: (index) => {
-                        const totalDataPoints = limitedDates.length;
+                        const totalDataPoints = dates.length;
                         const lastIndex = totalDataPoints - 1;
                         const numIntervals = 12;
                         const step = lastIndex / numIntervals;
@@ -718,7 +665,9 @@ const DailyPriceCharts = {
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
 
-                const filename = 'NGI Daily Prices.webp';
+                const sanitizedName = this.currentLocationName.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, ' ').trim();
+                const dateStr = this.currentEndDate.replace(/-/g, '');
+                const filename = `${sanitizedName} Daily Gas Price ${dateStr}.webp`;
 
                 link.download = filename;
                 link.href = url;
@@ -727,7 +676,7 @@ const DailyPriceCharts = {
                 document.body.removeChild(link);
                 URL.revokeObjectURL(url);
 
-                this.log(`Chart downloaded as <strong>${filename}</strong> (828×447px WebP)`);
+                this.log(`Chart downloaded as <strong>${filename}</strong> (828x447px WebP)`);
             }, 'image/webp');
         };
 
@@ -736,4 +685,4 @@ const DailyPriceCharts = {
 };
 
 // Initialize on DOM ready
-document.addEventListener('DOMContentLoaded', () => DailyPriceCharts.init());
+document.addEventListener('DOMContentLoaded', () => DailyHighLowCharts.init());

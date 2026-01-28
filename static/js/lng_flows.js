@@ -196,6 +196,13 @@ const LNGApp = {
                         throw new Error(`Invalid JSON response (${parseErr.message})`);
                     }
 
+                    // Check for session expiration
+                    if (res.status === 401 || data.auth_required) {
+                        this.log('Session expired. Redirecting to login...', 'error');
+                        window.location.href = '/auth';
+                        return;
+                    }
+
                     if(!res.ok) {
                         const errorMsg = data.error || `HTTP ${res.status}`;
                         throw new Error(errorMsg);

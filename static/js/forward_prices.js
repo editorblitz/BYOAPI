@@ -111,6 +111,13 @@ const App = {
         }
     },
 
+    formatLocalDate: function(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    },
+
     setupDates: function(latestIssueDate = null) {
         let latestIssueDateObj;
 
@@ -130,16 +137,16 @@ const App = {
         twoMonthsAgo.setMonth(latestIssueDateObj.getMonth() - 2);
 
         // Set default dates using the latest available issue date
-        document.getElementById('tradeDateInput').value = latestIssueDateObj.toISOString().split('T')[0];
-        document.getElementById('multiTradeDate').value = latestIssueDateObj.toISOString().split('T')[0];
-        document.getElementById('contractEndDate').value = latestIssueDateObj.toISOString().split('T')[0];
-        document.getElementById('contractStartDate').value = twoMonthsAgo.toISOString().split('T')[0];
+        document.getElementById('tradeDateInput').value = this.formatLocalDate(latestIssueDateObj);
+        document.getElementById('multiTradeDate').value = this.formatLocalDate(latestIssueDateObj);
+        document.getElementById('contractEndDate').value = this.formatLocalDate(latestIssueDateObj);
+        document.getElementById('contractStartDate').value = this.formatLocalDate(twoMonthsAgo);
 
         // Default issue dates for single price mode - use latest and 2 days before
         this.state.tradeDates = [
-            twoDaysBefore.toISOString().split('T')[0],
-            oneDayBefore.toISOString().split('T')[0],
-            latestIssueDateObj.toISOString().split('T')[0]
+            this.formatLocalDate(twoDaysBefore),
+            this.formatLocalDate(oneDayBefore),
+            this.formatLocalDate(latestIssueDateObj)
         ];
         this.renderTradeDatesList();
     },

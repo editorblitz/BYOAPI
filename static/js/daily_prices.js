@@ -7,6 +7,7 @@ const App = {
         compareList: [],
         chartInstance: null,
         rawRecords: [],
+        seasonalityData: null, // Stores seasonality table data for copy
         hiddenSeries: new Set(), // Track hidden series by name
         yAxisZoomEnabled: false, // Track y-axis zoom state
         // Full Location Database
@@ -253,13 +254,21 @@ const App = {
         if(lastLog) lastLog.textContent = msg;
     },
 
+    // Format a Date object as YYYY-MM-DD using local time
+    formatLocalDate: function(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    },
+
     setupDates: function() {
         const today = new Date();
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(today.getMonth() - 1);
 
-        document.getElementById('endDate').value = today.toISOString().split('T')[0];
-        document.getElementById('startDate').value = oneMonthAgo.toISOString().split('T')[0];
+        document.getElementById('endDate').value = this.formatLocalDate(today);
+        document.getElementById('startDate').value = this.formatLocalDate(oneMonthAgo);
 
         // Set 1M as default active timeframe
         const oneMonthBtn = document.querySelector('.timeframe-btn[data-timeframe="1M"]');
@@ -530,8 +539,8 @@ const App = {
         }
 
         // Update date inputs
-        document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
-        document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+        document.getElementById('startDate').value = this.formatLocalDate(startDate);
+        document.getElementById('endDate').value = this.formatLocalDate(endDate);
 
         // Update button states
         document.querySelectorAll('.timeframe-btn').forEach(btn => {
@@ -568,14 +577,32 @@ const App = {
     },
 
     updateCopyButtons: function() {
-        const disable = this.state.mode !== 'standard' || this.state.rawRecords.length === 0;
-        ['copyFlowBtn', 'copyTradeBtn'].forEach(id => {
-            const btn = document.getElementById(id);
-            if(!btn) return;
-            btn.disabled = disable;
-            btn.classList.toggle('opacity-40', disable);
-            btn.classList.toggle('cursor-not-allowed', disable);
-        });
+        const mode = this.state.mode;
+        const hasData = this.state.rawRecords.length > 0;
+
+        // Table title updates based on mode
+        const titleEl = document.getElementById('dataTableTitle');
+        if (titleEl) {
+            titleEl.textContent = mode === 'seasonality' ? 'Data Table - By Flow Date' : 'Data Table';
+        }
+
+        // Flow button: enabled in standard (with data) and seasonality (with data)
+        const flowBtn = document.getElementById('copyFlowBtn');
+        if (flowBtn) {
+            const disableFlow = (mode === 'seasonality') ? !this.state.seasonalityData : (!hasData || (mode !== 'standard'));
+            flowBtn.disabled = disableFlow;
+            flowBtn.classList.toggle('opacity-40', disableFlow);
+            flowBtn.classList.toggle('cursor-not-allowed', disableFlow);
+        }
+
+        // Trade button: only enabled in standard with data
+        const tradeBtn = document.getElementById('copyTradeBtn');
+        if (tradeBtn) {
+            const disableTrade = mode !== 'standard' || !hasData;
+            tradeBtn.disabled = disableTrade;
+            tradeBtn.classList.toggle('opacity-40', disableTrade);
+            tradeBtn.classList.toggle('cursor-not-allowed', disableTrade);
+        }
     },
 
     addToCompare: function(val, name) {
@@ -699,6 +726,7 @@ const App = {
             }
 
             this.state.rawRecords = Array.isArray(data.raw_records) ? data.raw_records : [];
+            this.state.seasonalityData = (mode === 'seasonality') ? data : null;
             this.renderChart(data);
             this.renderTable(data);
             this.updateCopyButtons();
@@ -1285,8 +1313,32 @@ const App = {
     },
 
     copyFlowSeries: function() {
+        // Seasonality mode: copy date + current year price
+        if(this.state.mode === 'seasonality') {
+            const data = this.state.seasonalityData;
+            if(!data || !data.table_rows || !data.table_rows.length) {
+                alert('No seasonality data to copy. Run an analysis first.');
+                return;
+            }
+            const payload = data.table_rows
+                .filter(row => row.date && row.curr !== null && row.curr !== undefined)
+                .map(row => `${row.date}\t${row.curr.toFixed(3)}`)
+                .join('\n');
+
+            this.copyToClipboard(payload)
+                .then(() => {
+                    this.log('Copied seasonality prices by flow date.');
+                    alert('Copied flow-date series.');
+                })
+                .catch(err => {
+                    this.log(`Copy failed: ${err.message}`);
+                    alert('Unable to copy flow-date series.');
+                });
+            return;
+        }
+
         if(this.state.mode !== 'standard') {
-            alert('Flow data is only available in Standard mode.');
+            alert('Flow data is only available in Standard or Seasonality mode.');
             return;
         }
 

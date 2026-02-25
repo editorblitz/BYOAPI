@@ -407,6 +407,10 @@ def process_seasonality_view(current_records, previous_records, year, historical
     date_keys = list(_MMDD_CALENDAR)
 
     current_lookup = _build_flow_day_lookup(current_records)
+    # Fill early-January gaps: the last December trades of the prior year
+    # set flow dates for Jan 1-5 that belong to the current year
+    _fill_boundary_gaps(current_lookup, previous_records)
+
     previous_lookup = _build_flow_day_lookup(previous_records)
 
     current_values = [current_lookup.get(k) for k in date_keys]
@@ -650,6 +654,27 @@ def _build_flow_day_lookup(records):
             if mmdd not in lookup:
                 lookup[mmdd] = price
     return lookup
+
+
+def _fill_boundary_gaps(lookup, prior_year_records):
+    """Fill early-January gaps in a flow-day lookup using the prior year's
+    December trades whose flow dates extend into the next year."""
+    if not prior_year_records:
+        return
+
+    for row in reversed(prior_year_records):
+        price = row.get('average')
+        if price is None:
+            continue
+        trade_date = row.get('trade_date', '')
+        # Only December trades can have flow dates spilling into January
+        if len(trade_date) >= 7 and trade_date[5:7] != '12':
+            break
+        start = row.get('flow_start_date') or trade_date
+        end = row.get('flow_end_date') or trade_date
+        for mmdd in _iterate_flow_mmdd(start, end):
+            if mmdd.startswith('01-') and mmdd not in lookup:
+                lookup[mmdd] = price
 
 
 def _build_flow_day_bucket(records):

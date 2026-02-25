@@ -54,6 +54,13 @@ const ForwardHeatmap = {
         }
     },
 
+    formatLocalDate: function(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    },
+
     setDefaultDates: function() {
         // Set default dates in US Eastern time
         const now = new Date();
@@ -65,7 +72,7 @@ const ForwardHeatmap = {
         startDate.setDate(startDate.getDate() - 7);
 
         document.getElementById('endDate').value = easternToday;
-        document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+        document.getElementById('startDate').value = this.formatLocalDate(startDate);
     },
 
     bindEvents: function() {

@@ -32,7 +32,7 @@ app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_FILE_DIR'] = './.flask_session'
 app.config['SESSION_PERMANENT'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # Max lifetime
-app.config['SESSION_COOKIE_SECURE'] = True  # HTTPS only
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') == 'production'  # HTTPS only in production
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # No JavaScript access
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
 
@@ -93,12 +93,6 @@ def index():
 @require_api_creds
 def dashboard():
     """Main dashboard hub with links to all tools."""
-    session_info = {
-        'email': session.get('user_email', 'Unknown'),
-        'remember_me': session.get('remember_me', False),
-        'expires_in': '7 days' if session.get('remember_me') else '8 hours'
-    }
-
     tools = [
         {
             'name': 'Spot Prices',
@@ -219,10 +213,26 @@ def dashboard():
             'icon': 'chart-bar',
             'category': 'charts',
             'image': 'daily-spot-charts-multi.png'
+        },
+        {
+            'name': 'Forward Curve - Multi Date Charts',
+            'description': 'Generate publication-ready forward curve charts showing price evolution across trade dates',
+            'url': url_for('quick_charts.forward_curve_charts_page'),
+            'icon': 'chart-line',
+            'category': 'charts',
+            'image': 'forward-curve-multi-date-charts.png'
+        },
+        {
+            'name': 'Spot + Forward Charts',
+            'description': 'Combine daily spot prices with forward curve on a single chart showing historical and future prices',
+            'url': url_for('quick_charts.spot_forward_charts_page'),
+            'icon': 'chart-line',
+            'category': 'charts',
+            'image': 'spot-forward-charts.png'
         }
     ]
 
-    return render_template('dashboard.html', session_info=session_info, tools=tools)
+    return render_template('dashboard.html', tools=tools)
 
 
 # ============= ERROR HANDLERS =============

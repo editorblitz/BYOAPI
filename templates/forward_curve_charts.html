@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Midday Charts - Multi - NGI Data Tools{% endblock %}
+{% block title %}Forward Curve Charts - NGI Data Tools{% endblock %}
 
 {% block head %}
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
@@ -39,9 +39,9 @@
             -webkit-appearance: none;
             -moz-appearance: none;
             appearance: none;
-            width: 20px;
-            height: 20px;
-            min-width: 20px;
+            width: 24px;
+            height: 24px;
+            min-width: 24px;
             border: 1px solid #d1d5db;
             border-radius: 2px;
             padding: 1px;
@@ -68,16 +68,33 @@
 
                     <div>
                         <label class="block text-xs font-semibold text-gray-700 uppercase mb-1">Location</label>
-                        <div class="flex gap-2">
-                            <select id="locationSelect" class="w-full px-2 py-1 border border-gray-300 text-sm bg-white"></select>
-                            <button id="addToCompareBtn" class="px-2 py-1 bg-gray-200 text-gray-900 text-sm font-semibold hover:bg-gray-300 border border-gray-300">+</button>
+                        <select id="locationSelect" class="w-full px-2 py-1 border border-gray-300 text-sm bg-white"></select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 uppercase mb-1">Price Type</label>
+                        <div class="flex gap-4">
+                            <label class="flex items-center gap-1 cursor-pointer">
+                                <input type="radio" name="priceType" value="fixed" checked class="w-4 h-4">
+                                <span class="text-sm">Fixed</span>
+                            </label>
+                            <label class="flex items-center gap-1 cursor-pointer">
+                                <input type="radio" name="priceType" value="basis" class="w-4 h-4">
+                                <span class="text-sm">Basis</span>
+                            </label>
                         </div>
                     </div>
 
-                    <div id="compareListSection" class="bg-gray-50 border border-gray-200 p-3 min-h-[100px]">
-                        <label class="block text-xs font-semibold text-gray-700 uppercase mb-2">Selected Locations</label>
-                        <div id="compareListContainer" class="space-y-2">
-                            <p class="text-xs text-gray-500 italic" id="emptyCompareMsg">No locations added.</p>
+                    <hr class="border-gray-200">
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 uppercase mb-1">Trade Dates</label>
+                        <div class="flex gap-2 mb-2">
+                            <input type="date" id="tradeDateInput" class="flex-1 px-2 py-1 border border-gray-300 text-sm focus:outline-none focus:border-gray-900">
+                            <button id="addTradeDateBtn" class="px-3 py-1 bg-gray-200 text-gray-900 text-sm font-semibold hover:bg-gray-300 border border-gray-300">+</button>
+                        </div>
+                        <div id="tradeDatesList" class="bg-gray-50 border border-gray-200 p-3 min-h-[80px]">
+                            <p class="text-xs text-gray-500 italic" id="emptyDatesMsg">No dates added.</p>
                         </div>
                     </div>
 
@@ -107,16 +124,37 @@
                 <div class="bg-white border border-gray-300 p-4">
                     <div id="chart"></div>
                 </div>
-                <!-- Date Range (below chart, right-aligned) -->
-                <div id="dateRangeSection" class="hidden flex justify-end mt-2">
+                <!-- Contract Range (below chart, right-aligned) -->
+                <div id="contractRangeSection" class="hidden flex justify-end mt-2">
                     <div class="flex items-center gap-2 text-xs text-gray-500">
-                        <span>Date range:</span>
-                        <input type="date" id="startDate" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white">
+                        <span>Contracts:</span>
+                        <select id="contractFrom" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white"></select>
                         <span>to</span>
-                        <input type="date" id="endDate" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white">
-                        <button id="updateChartBtn" class="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs hover:bg-gray-300 border border-gray-300">
+                        <select id="contractTo" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white"></select>
+                        <button id="updateContractRangeBtn" class="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs hover:bg-gray-300 border border-gray-300">
                             Update
                         </button>
+                    </div>
+                </div>
+                <!-- Legend Labels (below contract range) -->
+                <div id="legendEditorSection" class="hidden mt-1">
+                    <div class="flex justify-end">
+                        <div class="text-xs text-gray-500">
+                            <span class="mb-1 block">Legend:</span>
+                            <div id="legendEditorContainer" class="flex flex-col gap-1"></div>
+                            <button id="applyLegendBtn" class="mt-1.5 px-2 py-0.5 bg-gray-200 text-gray-600 text-xs hover:bg-gray-300 border border-gray-300">
+                                Apply
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- X-Axis Options -->
+                <div id="xAxisOptionsSection" class="hidden mt-1">
+                    <div class="flex justify-end">
+                        <label class="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer">
+                            <input type="checkbox" id="hideYearCheckbox" class="w-3.5 h-3.5">
+                            <span>Hide year on x-axis</span>
+                        </label>
                     </div>
                 </div>
             </main>
@@ -141,5 +179,5 @@
     </button>
 </div>
 
-<script src="{{ url_for('static', filename='js/midday_charts_multi.js') }}"></script>
+<script src="{{ url_for('static', filename='js/forward_curve_charts.js') }}"></script>
 {% endblock %}

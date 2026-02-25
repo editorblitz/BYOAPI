@@ -306,13 +306,20 @@ const SpreadsApp = {
         }
     },
 
+    formatLocalDate: function(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    },
+
     setDefaultDates: function() {
         const today = new Date();
         const thirtyDaysAgo = new Date(today);
         thirtyDaysAgo.setDate(today.getDate() - 30);
 
-        document.getElementById('endDate').value = today.toISOString().split('T')[0];
-        document.getElementById('startDate').value = thirtyDaysAgo.toISOString().split('T')[0];
+        document.getElementById('endDate').value = this.formatLocalDate(today);
+        document.getElementById('startDate').value = this.formatLocalDate(thirtyDaysAgo);
     },
 
     analyze: async function() {

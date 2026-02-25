@@ -208,6 +208,13 @@ const StripCalculator = {
         document.getElementById('progressCount').textContent = `${current} / ${total}`;
     },
 
+    formatLocalDate: function(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    },
+
     setDefaultDates: function() {
         const now = new Date();
         const easternToday = now.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
@@ -220,8 +227,8 @@ const StripCalculator = {
         const thirtyDaysAgo = new Date(yesterday);
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        document.getElementById('endDate').value = yesterday.toISOString().split('T')[0];
-        document.getElementById('startDate').value = thirtyDaysAgo.toISOString().split('T')[0];
+        document.getElementById('endDate').value = this.formatLocalDate(yesterday);
+        document.getElementById('startDate').value = this.formatLocalDate(thirtyDaysAgo);
     },
 
     updateLocations: function() {

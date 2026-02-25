@@ -5,7 +5,8 @@
 
 const MiddayChartsMulti = {
     chart: null,
-    compareList: [], // For multi-location comparison
+    compareList: [], // Each item: {val, name, color, style}
+    lastApiResponse: null, // Cached for re-rendering on color/style change
 
     // Color palette for multi-line charts (up to 8 colors)
     colorPalette: [
@@ -18,6 +19,16 @@ const MiddayChartsMulti = {
         '#fd7e14',  // Orange
         '#20c997'   // Teal
     ],
+
+    // Default line style rotation
+    defaultStyles: ['solid', 'solid', 'dashed', 'solid', 'dotted', 'dashed', 'solid', 'dotted'],
+
+    // SVG path icons for legend
+    legendIcons: {
+        solid:  'path://M0,5L40,5L40,7L0,7Z',
+        dashed: 'path://M0,5L10,5L10,7L0,7Z M15,5L25,5L25,7L15,7Z M30,5L40,5L40,7L30,7Z',
+        dotted: 'path://M0,5L4,5L4,7L0,7Z M8,5L12,5L12,7L8,7Z M16,5L20,5L20,7L16,7Z M24,5L28,5L28,7L24,7Z M32,5L36,5L36,7L36,7Z'
+    },
 
     // Location data
     locations: {
@@ -289,12 +300,21 @@ const MiddayChartsMulti = {
         document.getElementById('generateBtn').addEventListener('click', () => this.handleGenerate());
         document.getElementById('downloadBtn').addEventListener('click', () => this.downloadChart());
         document.getElementById('updateChartBtn').addEventListener('click', () => this.handleGenerate());
+        document.getElementById('exportColorsBtn').addEventListener('click', () => this.exportColors());
+        document.getElementById('importColorsBtn').addEventListener('click', () => document.getElementById('importColorsFile').click());
+        document.getElementById('importColorsFile').addEventListener('change', (e) => this.importColors(e));
     },
 
     addToCompare: function(val, name) {
         if(this.compareList.some(i => i.val === val)) return;
 
-        this.compareList.push({val, name});
+        const idx = this.compareList.length;
+        this.compareList.push({
+            val,
+            name,
+            color: this.colorPalette[idx % this.colorPalette.length],
+            style: this.defaultStyles[idx % this.defaultStyles.length]
+        });
         this.renderCompareList();
         this.log(`Added <strong>${name}</strong> to comparison list.`);
     },
@@ -317,12 +337,16 @@ const MiddayChartsMulti = {
             return;
         }
 
-        this.compareList.forEach(item => {
+        this.compareList.forEach((item, idx) => {
             const div = document.createElement('div');
-            div.className = 'flex justify-between items-center bg-white p-2 border border-gray-300 text-sm';
+            div.className = 'bg-white p-2 border border-gray-300 text-sm';
+
+            // Top row: name + remove button
+            const topRow = document.createElement('div');
+            topRow.className = 'flex justify-between items-center';
 
             const label = document.createElement('span');
-            label.className = 'truncate pr-2';
+            label.className = 'truncate pr-2 text-xs font-medium';
             label.textContent = item.name;
 
             const removeBtn = document.createElement('button');
@@ -330,8 +354,41 @@ const MiddayChartsMulti = {
             removeBtn.textContent = '×';
             removeBtn.addEventListener('click', () => this.removeFromCompare(item.val));
 
-            div.appendChild(label);
-            div.appendChild(removeBtn);
+            topRow.appendChild(label);
+            topRow.appendChild(removeBtn);
+
+            // Bottom row: color picker + style dropdown
+            const bottomRow = document.createElement('div');
+            bottomRow.className = 'flex items-center gap-2 mt-1';
+
+            const colorInput = document.createElement('input');
+            colorInput.type = 'color';
+            colorInput.value = item.color;
+            colorInput.className = 'color-picker';
+            colorInput.addEventListener('input', (e) => {
+                item.color = e.target.value;
+                if (this.lastApiResponse) this.rerenderChart();
+            });
+
+            const styleSelect = document.createElement('select');
+            styleSelect.className = 'px-1 py-0.5 border border-gray-300 text-xs bg-white flex-1';
+            ['solid', 'dashed', 'dotted'].forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.textContent = s.charAt(0).toUpperCase() + s.slice(1);
+                if (s === item.style) opt.selected = true;
+                styleSelect.appendChild(opt);
+            });
+            styleSelect.addEventListener('change', (e) => {
+                item.style = e.target.value;
+                if (this.lastApiResponse) this.rerenderChart();
+            });
+
+            bottomRow.appendChild(colorInput);
+            bottomRow.appendChild(styleSelect);
+
+            div.appendChild(topRow);
+            div.appendChild(bottomRow);
             container.appendChild(div);
         });
     },
@@ -379,6 +436,7 @@ const MiddayChartsMulti = {
             const totalPoints = data.series.reduce((sum, s) => sum + s.dates.length, 0);
             this.log(`Received ${totalPoints} total data points across ${data.series.length} series.`);
 
+            this.lastApiResponse = data;
             this.renderChart(data);
             this.log(`Chart rendered: <strong>750×400px</strong> display (aspect ratio 15:8) • Exports as <strong>828×447px WebP</strong>`);
 
@@ -450,9 +508,11 @@ const MiddayChartsMulti = {
             return `${day}-${monthMap[month]}-${year}`;
         });
 
-        // Build series with colors from palette
+        // Build series with per-item colors and styles
         const series = limitedSeries.map((s, idx) => {
-            const seriesColor = this.colorPalette[idx % this.colorPalette.length];
+            const item = this.compareList[idx];
+            const seriesColor = item ? item.color : this.colorPalette[idx % this.colorPalette.length];
+            const lineStyle = item ? item.style : 'solid';
             return {
                 name: s.location_name,
                 type: 'line',
@@ -463,7 +523,8 @@ const MiddayChartsMulti = {
                 },
                 lineStyle: {
                     color: seriesColor,
-                    width: 3
+                    width: 3,
+                    type: lineStyle
                 },
                 symbol: 'none',
                 connectNulls: false
@@ -471,7 +532,7 @@ const MiddayChartsMulti = {
         });
 
         const option = {
-            color: this.colorPalette,
+            color: this.compareList.map(item => item.color),
             toolbox: {
                 show: false
             },
@@ -496,10 +557,16 @@ const MiddayChartsMulti = {
                     fontSize: 12,
                     color: '#000'
                 },
-                icon: 'rect',
                 itemWidth: 25,
-                itemHeight: 3,
-                data: limitedSeries.map(s => s.location_name)
+                itemHeight: 12,
+                data: limitedSeries.map((s, idx) => {
+                    const item = this.compareList[idx];
+                    const lineStyle = item ? item.style : 'solid';
+                    return {
+                        name: s.location_name,
+                        icon: this.legendIcons[lineStyle] || this.legendIcons.solid
+                    };
+                })
             },
             graphic: [
                 {
@@ -732,6 +799,61 @@ const MiddayChartsMulti = {
         };
 
         img.src = fullChartBase64;
+    },
+
+    rerenderChart: function() {
+        if (this.lastApiResponse) {
+            this.renderChart(this.lastApiResponse);
+        }
+    },
+
+    exportColors: function() {
+        if (!this.compareList.length) {
+            alert('No color settings to export.');
+            return;
+        }
+        const data = {
+            preset: 'Midday Multi Colors',
+            colors: this.compareList.map(item => ({ color: item.color, style: item.style }))
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = 'midday-multi-colors.json';
+        link.href = url;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        this.log('Color settings exported.');
+    },
+
+    importColors: function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const data = JSON.parse(evt.target.result);
+                if (!data.colors || !Array.isArray(data.colors)) {
+                    throw new Error('Invalid format: missing colors array');
+                }
+                data.colors.forEach((c, i) => {
+                    if (i < this.compareList.length) {
+                        if (c.color) this.compareList[i].color = c.color;
+                        if (c.style) this.compareList[i].style = c.style;
+                    }
+                });
+                this.renderCompareList();
+                if (this.lastApiResponse) this.rerenderChart();
+                this.log(`Imported color settings from <strong>${file.name}</strong>`);
+            } catch (err) {
+                alert('Could not read color file: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
     }
 };
 

@@ -5,7 +5,9 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(find:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(cd \"/mnt/c/Users/chris/Dropbox/CLOUD DESKTOP/02_PROJECTS/BYO API Dashboard/BYOAPI\" && git add auth.py templates/auth.html && git commit -m \"$\\(cat <<'EOF'\nSimplify login - remove Remember Me option\n\nReplit deployment doesn't persist sessions, so the Remember Me\ncheckbox was misleading. Now uses a fixed 8-hour session expiry.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(cd \"/mnt/c/Users/chris/Dropbox/CLOUD DESKTOP/02_PROJECTS/BYO API Dashboard/BYOAPI\" && python -c \"import py_compile; py_compile.compile\\('app.py', doraise=True\\); py_compile.compile\\('data_routes/quick_charts.py', doraise=True\\); print\\('All Python files compile successfully'\\)\")"
     ]
   }
 }

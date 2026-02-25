@@ -1,14 +1,16 @@
 /**
- * Daily Price Charts - Publication-ready NGI multi-location comparison charts
- * Generates multi-location comparison charts at 750x400px, exports as 828x447px WebP
+ * Forward Curve Charts - Publication-ready NGI forward curve charts
+ * Shows how one location's forward curve evolves across multiple trade dates
+ * Generates charts at 750x400px, exports as 828x447px WebP
  */
 
-const DailyPriceCharts = {
+const ForwardCurveCharts = {
     chart: null,
-    compareList: [], // Each item: {val, name, color, style}
-    lastApiResponse: null, // Cached for re-rendering on color/style change
+    tradeDates: [],       // Array of { date, color, style } objects
+    fullApiResponse: null,
+    customLegendLabels: {}, // Map of original series name -> custom label
 
-    // Color palette for multi-line charts (up to 8 colors)
+    // Color palette matching NGI publication style
     colorPalette: [
         '#1d4063',  // Dark Navy Blue
         '#37b4ee',  // Sky Blue
@@ -21,19 +23,18 @@ const DailyPriceCharts = {
     ],
 
     // Default line style rotation
-    defaultStyles: ['solid', 'solid', 'dashed', 'solid', 'dotted', 'dashed', 'solid', 'dotted'],
+    defaultStyles: ['solid', 'solid', 'dashed', 'dotted', 'dashed', 'solid', 'dotted', 'dashed'],
 
-    // SVG path icons for legend
+    // SVG path icons for legend (thin filled rectangles mimicking line styles)
     legendIcons: {
         solid:  'path://M0,5L40,5L40,7L0,7Z',
         dashed: 'path://M0,5L10,5L10,7L0,7Z M15,5L25,5L25,7L15,7Z M30,5L40,5L40,7L30,7Z',
-        dotted: 'path://M0,5L4,5L4,7L0,7Z M8,5L12,5L12,7L8,7Z M16,5L20,5L20,7L16,7Z M24,5L28,5L28,7L24,7Z M32,5L36,5L36,7L36,7Z'
+        dotted: 'path://M0,5L4,5L4,7L0,7Z M8,5L12,5L12,7L8,7Z M16,5L20,5L20,7L16,7Z M24,5L28,5L28,7L24,7Z M32,5L36,5L36,7L32,7Z'
     },
 
-    // Location data
+    // Location data (full list matching daily price charts)
     locations: {
         'Favorites': [
-            { name: 'National Avg.', value: 'USAVG' },
             { name: 'Henry Hub', value: 'SLAHH' },
             { name: 'Waha', value: 'WTXWAHA' },
             { name: 'Houston Ship Channel', value: 'ETXHSHIP' },
@@ -216,11 +217,12 @@ const DailyPriceCharts = {
         ]
     },
 
-    init: function() {
+    init: async function() {
         this.setupDropdowns();
         this.bindEvents();
         this.setupLogToggle();
-        this.log('Daily Spot Charts - Multi system initialized.');
+        await this.fetchLatestDateAndSetupDates();
+        this.log('Forward Curve Charts system initialized.');
     },
 
     log: function(msg) {
@@ -232,7 +234,7 @@ const DailyPriceCharts = {
             logContainer.scrollTop = logContainer.scrollHeight;
         }
         const lastLog = document.getElementById('lastLogMsg');
-        if(lastLog) lastLog.textContent = msg;
+        if(lastLog) lastLog.textContent = msg.replace(/<[^>]*>/g, '');
     },
 
     setupLogToggle: function() {
@@ -258,7 +260,6 @@ const DailyPriceCharts = {
         const regionSelect = document.getElementById('regionSelect');
         const locationSelect = document.getElementById('locationSelect');
 
-        // Populate regions
         Object.keys(this.locations).forEach(region => {
             const option = document.createElement('option');
             option.value = region;
@@ -266,9 +267,11 @@ const DailyPriceCharts = {
             regionSelect.appendChild(option);
         });
 
-        // Set default to Favorites
         regionSelect.value = 'Favorites';
         this.updateLocations();
+
+        // Default to Henry Hub
+        locationSelect.value = 'SLAHH';
     },
 
     updateLocations: function() {
@@ -287,145 +290,208 @@ const DailyPriceCharts = {
         });
     },
 
+    fetchLatestDateAndSetupDates: async function() {
+        try {
+            this.log('Fetching latest available issue date...');
+            const res = await fetch('/api/forward-latest-date');
+            const data = await res.json();
+
+            if (data.success && data.latest_issue_date) {
+                this.log(`Latest issue date: <strong>${data.latest_issue_date}</strong>`);
+                this.setupDefaultDates(data.latest_issue_date);
+            } else {
+                this.log('Could not fetch latest date, using fallback defaults');
+                this.setupDefaultDates(null);
+            }
+        } catch (err) {
+            this.log(`Error fetching latest date: ${err.message}`);
+            this.setupDefaultDates(null);
+        }
+    },
+
+    formatLocalDate: function(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    },
+
+    setupDefaultDates: function(latestIssueDate) {
+        let latest;
+        if (latestIssueDate) {
+            latest = new Date(latestIssueDate + 'T00:00:00');
+        } else {
+            latest = new Date();
+        }
+
+        // ~2 weeks ago
+        const twoWeeksAgo = new Date(latest);
+        twoWeeksAgo.setDate(latest.getDate() - 14);
+
+        // ~1 month ago
+        const oneMonthAgo = new Date(latest);
+        oneMonthAgo.setMonth(latest.getMonth() - 1);
+
+        // Pre-populate 3 trade dates with colors and styles
+        this.tradeDates = [
+            { date: this.formatLocalDate(latest),       color: this.colorPalette[0], style: this.defaultStyles[0] },
+            { date: this.formatLocalDate(twoWeeksAgo),  color: this.colorPalette[1], style: this.defaultStyles[1] },
+            { date: this.formatLocalDate(oneMonthAgo),  color: this.colorPalette[2], style: this.defaultStyles[2] }
+        ];
+
+        document.getElementById('tradeDateInput').value = this.formatLocalDate(latest);
+
+        this.renderTradeDatesList();
+    },
+
     bindEvents: function() {
         document.getElementById('regionSelect').addEventListener('change', () => this.updateLocations());
-        document.getElementById('addToCompareBtn').addEventListener('click', () => {
-            const sel = document.getElementById('locationSelect');
-            if(sel.selectedIndex >= 0) {
-                const opt = sel.options[sel.selectedIndex];
-                const name = opt.textContent;
-                this.addToCompare(opt.value, name);
-            }
-        });
+        document.getElementById('addTradeDateBtn').addEventListener('click', () => this.addTradeDate());
         document.getElementById('generateBtn').addEventListener('click', () => this.handleGenerate());
         document.getElementById('downloadBtn').addEventListener('click', () => this.downloadChart());
-        document.getElementById('updateChartBtn').addEventListener('click', () => this.handleGenerate());
+        document.getElementById('updateContractRangeBtn').addEventListener('click', () => this.updateContractRange());
+        document.getElementById('applyLegendBtn').addEventListener('click', () => this.applyLegendLabels());
         document.getElementById('exportColorsBtn').addEventListener('click', () => this.exportColors());
         document.getElementById('importColorsBtn').addEventListener('click', () => document.getElementById('importColorsFile').click());
         document.getElementById('importColorsFile').addEventListener('change', (e) => this.importColors(e));
-    },
-
-    addToCompare: function(val, name) {
-        if(this.compareList.some(i => i.val === val)) return;
-
-        const idx = this.compareList.length;
-        this.compareList.push({
-            val,
-            name,
-            color: this.colorPalette[idx % this.colorPalette.length],
-            style: this.defaultStyles[idx % this.defaultStyles.length]
+        document.getElementById('hideYearCheckbox').addEventListener('change', () => {
+            if (this.fullApiResponse && this.chart) this.rerenderChart();
         });
-        this.renderCompareList();
-        this.log(`Added <strong>${name}</strong> to comparison list.`);
     },
 
-    removeFromCompare: function(val) {
-        const item = this.compareList.find(i => i.val === val);
-        this.compareList = this.compareList.filter(i => i.val !== val);
-        this.renderCompareList();
-        if(item) {
-            this.log(`Removed <strong>${item.name}</strong> from comparison list.`);
+    addTradeDate: function() {
+        const input = document.getElementById('tradeDateInput');
+        const date = input.value;
+        if (date && !this.tradeDates.some(td => td.date === date)) {
+            const idx = this.tradeDates.length;
+            this.tradeDates.push({
+                date: date,
+                color: this.colorPalette[idx % this.colorPalette.length],
+                style: this.defaultStyles[idx % this.defaultStyles.length]
+            });
+            this.renderTradeDatesList();
+            this.log(`Added trade date: <strong>${date}</strong>`);
         }
     },
 
-    renderCompareList: function() {
-        const container = document.getElementById('compareListContainer');
-        container.innerHTML = '';
+    removeTradeDate: function(date) {
+        this.tradeDates = this.tradeDates.filter(td => td.date !== date);
+        this.renderTradeDatesList();
+        this.log(`Removed trade date: ${date}`);
+        if (this.fullApiResponse && this.chart) this.rerenderChart();
+    },
 
-        if(this.compareList.length === 0) {
-            container.innerHTML = '<p class="text-xs text-gray-500 italic">No locations added.</p>';
+    renderTradeDatesList: function() {
+        const container = document.getElementById('tradeDatesList');
+        const emptyMsg = document.getElementById('emptyDatesMsg');
+
+        // Remove only date items
+        Array.from(container.querySelectorAll('.date-item')).forEach(el => el.remove());
+
+        if (this.tradeDates.length === 0) {
+            emptyMsg.classList.remove('hidden');
             return;
         }
 
-        this.compareList.forEach((item, idx) => {
+        emptyMsg.classList.add('hidden');
+
+        this.tradeDates.forEach(td => {
             const div = document.createElement('div');
-            div.className = 'bg-white p-2 border border-gray-300 text-sm';
+            div.className = 'date-item flex items-center gap-1.5 bg-white p-1.5 border border-gray-300 text-sm mb-1';
 
-            // Top row: name + remove button
-            const topRow = document.createElement('div');
-            topRow.className = 'flex justify-between items-center';
-
-            const label = document.createElement('span');
-            label.className = 'truncate pr-2 text-xs font-medium';
-            label.textContent = item.name;
-
-            const removeBtn = document.createElement('button');
-            removeBtn.className = 'text-gray-500 hover:text-red-600 font-bold px-1';
-            removeBtn.textContent = '×';
-            removeBtn.addEventListener('click', () => this.removeFromCompare(item.val));
-
-            topRow.appendChild(label);
-            topRow.appendChild(removeBtn);
-
-            // Bottom row: color picker + style dropdown
-            const bottomRow = document.createElement('div');
-            bottomRow.className = 'flex items-center gap-2 mt-1';
-
+            // Color picker
             const colorInput = document.createElement('input');
             colorInput.type = 'color';
-            colorInput.value = item.color;
+            colorInput.value = td.color;
             colorInput.className = 'color-picker';
             colorInput.addEventListener('input', (e) => {
-                item.color = e.target.value;
-                if (this.lastApiResponse) this.rerenderChart();
+                td.color = e.target.value;
+                if (this.fullApiResponse && this.chart) this.rerenderChart();
             });
 
+            // Date label
+            const label = document.createElement('span');
+            label.className = 'flex-1 text-xs';
+            label.textContent = td.date;
+
+            // Line style selector
             const styleSelect = document.createElement('select');
-            styleSelect.className = 'px-1 py-0.5 border border-gray-300 text-xs bg-white flex-1';
+            styleSelect.className = 'text-xs border border-gray-300 px-1 py-0.5 bg-white';
             ['solid', 'dashed', 'dotted'].forEach(s => {
                 const opt = document.createElement('option');
                 opt.value = s;
                 opt.textContent = s.charAt(0).toUpperCase() + s.slice(1);
-                if (s === item.style) opt.selected = true;
                 styleSelect.appendChild(opt);
             });
+            styleSelect.value = td.style;
             styleSelect.addEventListener('change', (e) => {
-                item.style = e.target.value;
-                if (this.lastApiResponse) this.rerenderChart();
+                td.style = e.target.value;
+                if (this.fullApiResponse && this.chart) this.rerenderChart();
             });
 
-            bottomRow.appendChild(colorInput);
-            bottomRow.appendChild(styleSelect);
+            // Remove button
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'text-gray-500 hover:text-red-600 font-bold px-1';
+            removeBtn.textContent = '\u00d7';
+            removeBtn.addEventListener('click', () => this.removeTradeDate(td.date));
 
-            div.appendChild(topRow);
-            div.appendChild(bottomRow);
+            div.appendChild(colorInput);
+            div.appendChild(label);
+            div.appendChild(styleSelect);
+            div.appendChild(removeBtn);
             container.appendChild(div);
         });
     },
 
+    getLocationName: function() {
+        const sel = document.getElementById('locationSelect');
+        return sel.options[sel.selectedIndex].text;
+    },
+
+    getPriceTypeLabel: function() {
+        const priceType = document.querySelector('input[name="priceType"]:checked').value;
+        return priceType === 'fixed' ? 'Fixed Price' : 'Basis';
+    },
+
+    // Convert style string to ECharts lineStyle.type
+    styleToEcharts: function(style) {
+        switch(style) {
+            case 'dashed': return [8, 4];
+            case 'dotted': return [3, 3];
+            default: return 'solid';
+        }
+    },
+
+    // Get SVG path icon for legend based on line style
+    getLegendIcon: function(style) {
+        return this.legendIcons[style] || this.legendIcons.solid;
+    },
+
     handleGenerate: async function() {
         try {
-            if (this.compareList.length === 0) {
-                alert('Please add at least one location to compare.');
+            if (this.tradeDates.length === 0) {
+                alert('Please add at least one trade date.');
                 return;
             }
 
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
+            const location = document.getElementById('locationSelect').value;
+            const locationName = this.getLocationName();
+            const priceType = document.querySelector('input[name="priceType"]:checked').value;
 
-            // Validate dates only if both are provided (for updates)
-            if (startDate && endDate && startDate > endDate) {
-                alert('Start date must be before end date.');
-                return;
-            }
+            const params = new URLSearchParams();
+            params.append('mode', 'single_price');
+            params.append('location', location);
+            params.append('price_type', priceType);
+            this.tradeDates.forEach(td => params.append('issue_dates[]', td.date));
 
-            const locations = this.compareList.map(item => item.val).join(',');
+            this.log(`Fetching forward curves for <strong>${locationName}</strong> (${this.tradeDates.length} trade dates)...`);
 
-            // Build URL with optional date params
-            let url = `/api/quick-charts?type=daily&locations=${locations}`;
-            if (startDate && endDate) {
-                url += `&start_date=${startDate}&end_date=${endDate}`;
-                this.log(`Fetching daily prices for ${this.compareList.length} location(s) from ${startDate} to ${endDate}...`);
-            } else {
-                this.log(`Fetching daily prices for ${this.compareList.length} location(s) (last 12 months)...`);
-            }
-
-            const response = await fetch(url);
+            const response = await fetch(`/api/forward-prices?${params.toString()}`);
             const data = await response.json();
 
             // Check for session expiration
             if (response.status === 401 || data.auth_required) {
-                this.log('Session expired. Redirecting to login...', 'error');
+                this.log('Session expired. Redirecting to login...');
                 window.location.href = '/auth';
                 return;
             }
@@ -433,23 +499,28 @@ const DailyPriceCharts = {
             if (!response.ok) {
                 throw new Error(data.error || `Failed to fetch data: ${response.status}`);
             }
-            const totalPoints = data.series.reduce((sum, s) => sum + s.dates.length, 0);
-            this.log(`Received ${totalPoints} total data points across ${data.series.length} series.`);
 
-            this.lastApiResponse = data;
-            this.renderChart(data);
-            this.log(`Chart rendered: <strong>750×400px</strong> display (aspect ratio 15:8) • Exports as <strong>828×447px WebP</strong>`);
-
-            // Show download button and date range section
-            document.getElementById('downloadBtn').classList.remove('hidden');
-            document.getElementById('dateRangeSection').classList.remove('hidden');
-
-            // Update date inputs to show actual data range
-            if (data.series && data.series.length > 0 && data.series[0].dates.length > 0) {
-                const dates = data.series[0].dates;
-                document.getElementById('startDate').value = dates[0];
-                document.getElementById('endDate').value = dates[dates.length - 1];
+            if (data.metadata && data.metadata.warning) {
+                this.log(`Warning: ${data.metadata.warning}`);
             }
+
+            // Store full response for contract range filtering
+            this.fullApiResponse = data;
+
+            // Format series names to DD-Mon-YYYY and add (Current) annotation
+            this.formatSeriesNames(data);
+
+            this.renderChart(data);
+            this.log(`Chart rendered: <strong>750\u00d7400px</strong> display \u2022 ${data.series.length} series, ${data.dates.length} contract months`);
+
+            // Show download button, contract range section, and legend editor
+            document.getElementById('downloadBtn').classList.remove('hidden');
+            this.setupContractRangeDropdowns(data.dates);
+            document.getElementById('contractRangeSection').classList.remove('hidden');
+            this.customLegendLabels = {};
+            this.setupLegendEditor(data);
+            document.getElementById('xAxisOptionsSection').classList.remove('hidden');
+
         } catch (error) {
             console.error('Error fetching chart data:', error);
             this.log(`<span class="text-red-400">Error: ${error.message}</span>`);
@@ -457,90 +528,210 @@ const DailyPriceCharts = {
         }
     },
 
+    formatSeriesNames: function(data) {
+        if (!data.series || data.series.length === 0) return;
+
+        const monthMap = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+
+        let latestIdx = 0;
+        let latestDate = new Date(0);
+
+        // Reformat each series name from "Jan 15, 2024" to "15-Jan-2024"
+        data.series.forEach((s, i) => {
+            const match = s.name.match(/^(\w+)\s+(\d+),\s+(\d+)$/);
+            if (match) {
+                const [_, month, day, year] = match;
+                const d = new Date(parseInt(year), monthMap[month], parseInt(day));
+
+                s.name = `${day.padStart(2, '0')}-${month}-${year}`;
+
+                if (d > latestDate) {
+                    latestDate = d;
+                    latestIdx = i;
+                }
+            }
+        });
+
+        // Add "(Current)" to the most recent trade date
+        data.series[latestIdx].name += ' (Current)';
+    },
+
+    // Map API series back to tradeDates by issue_date from raw_records
+    getSeriesConfig: function(data, idx) {
+        const issueDate = data.raw_records && data.raw_records[idx]
+            ? data.raw_records[idx].issue_date
+            : null;
+        const tradeDateObj = issueDate
+            ? this.tradeDates.find(td => td.date === issueDate)
+            : null;
+
+        return {
+            color: tradeDateObj ? tradeDateObj.color : this.colorPalette[idx % this.colorPalette.length],
+            style: tradeDateObj ? tradeDateObj.style : this.defaultStyles[idx % this.defaultStyles.length]
+        };
+    },
+
+    setupContractRangeDropdowns: function(dates) {
+        const fromSelect = document.getElementById('contractFrom');
+        const toSelect = document.getElementById('contractTo');
+
+        fromSelect.innerHTML = '';
+        toSelect.innerHTML = '';
+
+        dates.forEach(d => {
+            const fromOpt = document.createElement('option');
+            fromOpt.value = d;
+            fromOpt.textContent = d;
+            fromSelect.appendChild(fromOpt);
+
+            const toOpt = document.createElement('option');
+            toOpt.value = d;
+            toOpt.textContent = d;
+            toSelect.appendChild(toOpt);
+        });
+
+        fromSelect.value = dates[0];
+        toSelect.value = dates[dates.length - 1];
+    },
+
+    updateContractRange: function() {
+        if (!this.fullApiResponse) return;
+        this.rerenderChart();
+    },
+
+    setupLegendEditor: function(data) {
+        const container = document.getElementById('legendEditorContainer');
+        container.innerHTML = '';
+
+        if (!data.series || data.series.length === 0) return;
+
+        data.series.forEach((s, idx) => {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = this.customLegendLabels[s.name] || s.name;
+            input.dataset.originalName = s.name;
+            input.className = 'px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-32';
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') this.applyLegendLabels();
+            });
+            container.appendChild(input);
+        });
+
+        document.getElementById('legendEditorSection').classList.remove('hidden');
+    },
+
+    applyLegendLabels: function() {
+        const inputs = document.querySelectorAll('#legendEditorContainer input');
+        this.customLegendLabels = {};
+        inputs.forEach(input => {
+            const original = input.dataset.originalName;
+            const custom = input.value.trim();
+            if (custom && custom !== original) {
+                this.customLegendLabels[original] = custom;
+            }
+        });
+        this.rerenderChart();
+        this.log('Legend labels updated.');
+    },
+
+    // Re-render chart from stored data (used for color/style changes and contract range updates)
+    rerenderChart: function() {
+        if (!this.fullApiResponse) return;
+
+        const fromVal = document.getElementById('contractFrom').value;
+        const toVal = document.getElementById('contractTo').value;
+        const allDates = this.fullApiResponse.dates;
+        const fromIdx = allDates.indexOf(fromVal);
+        const toIdx = allDates.indexOf(toVal);
+
+        let chartData;
+        if (fromIdx !== -1 && toIdx !== -1 && fromIdx <= toIdx) {
+            chartData = {
+                ...this.fullApiResponse,
+                dates: allDates.slice(fromIdx, toIdx + 1),
+                series: this.fullApiResponse.series.map(s => ({
+                    ...s,
+                    data: s.data.slice(fromIdx, toIdx + 1)
+                }))
+            };
+        } else {
+            chartData = this.fullApiResponse;
+        }
+
+        this.renderChart(chartData);
+    },
+
     renderChart: function(data) {
         const chartDom = document.getElementById('chart');
 
-        // Dispose of existing chart instance to prevent conflicts
+        // Dispose of existing chart instance
         if (this.chart) {
             this.chart.dispose();
         }
 
-        // Create fresh chart instance
         this.chart = echarts.init(chartDom);
 
-        // Check if we have valid data
         if (!data || !data.series || data.series.length === 0) {
-            alert('No data available for the selected locations. Please try different locations or check your API credentials.');
+            alert('No data available. Please try different parameters.');
             return;
         }
 
-        // Use the data as-is (API returns the requested date range)
-        const limitedSeries = data.series.map(s => ({
-            location_name: s.location_name,
-            dates: s.dates,
-            averages: s.averages
-        }));
+        const locationName = this.getLocationName();
+        const priceTypeLabel = this.getPriceTypeLabel();
+        const titleText = `NGI's ${locationName} Forward ${priceTypeLabel}`;
 
-        // Use dates from first series
-        const limitedDates = limitedSeries[0].dates;
-
-        // Calculate Y-axis bounds across all series
+        // Calculate Y-axis bounds
         let allPrices = [];
-        limitedSeries.forEach(s => {
-            const validPrices = s.averages.filter(price => !isNaN(price) && price !== null);
-            allPrices = allPrices.concat(validPrices);
+        data.series.forEach(s => {
+            s.data.forEach(p => {
+                if (p !== null && p !== undefined && !isNaN(p)) {
+                    allPrices.push(p);
+                }
+            });
         });
 
         const minPrice = Math.min(...allPrices);
         const maxPrice = Math.max(...allPrices);
-
         const interval = this.calculateYAxisInterval(minPrice, maxPrice);
-        const adjustedMinPrice = Math.floor(minPrice / interval) * interval;
-        const adjustedMaxPrice = Math.ceil(maxPrice / interval) * interval;
+        const adjustedMin = Math.floor(minPrice / interval) * interval;
+        const adjustedMax = Math.ceil(maxPrice / interval) * interval;
 
-        // Reformat dates to DD-Mon-YYYY
-        const reformattedDates = limitedDates.map(dateStr => {
-            const [year, month, day] = dateStr.split('-');
-            const monthMap = {
-                '01': 'Jan', '02': 'Feb', '03': 'Mar', '04': 'Apr', '05': 'May', '06': 'Jun',
-                '07': 'Jul', '08': 'Aug', '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Dec'
-            };
-            return `${day}-${monthMap[month]}-${year}`;
-        });
+        // Build series configs from trade date settings
+        const seriesConfigs = data.series.map((s, idx) => this.getSeriesConfig(data, idx));
 
-        // Build series with per-item colors and styles
-        const series = limitedSeries.map((s, idx) => {
-            const item = this.compareList[idx];
-            const seriesColor = item ? item.color : this.colorPalette[idx % this.colorPalette.length];
-            const lineStyle = item ? item.style : 'solid';
+        // Build ECharts series (apply custom legend labels if set)
+        const series = data.series.map((s, idx) => {
+            const cfg = seriesConfigs[idx];
+            const displayName = this.customLegendLabels[s.name] || s.name;
             return {
-                name: s.location_name,
+                name: displayName,
                 type: 'line',
-                data: s.averages.map(value => isNaN(value) || value === null ? null : value),
-                color: seriesColor,
-                itemStyle: {
-                    color: seriesColor
-                },
+                data: s.data.map(v => (v === null || v === undefined || isNaN(v)) ? null : v),
+                color: cfg.color,
+                itemStyle: { color: cfg.color },
                 lineStyle: {
-                    color: seriesColor,
+                    color: cfg.color,
                     width: 3,
-                    type: lineStyle
+                    type: this.styleToEcharts(cfg.style)
                 },
                 symbol: 'none',
-                connectNulls: false
+                connectNulls: true
             };
         });
 
+        // Build legend data with per-item SVG path icons matching line style
+        const legendData = data.series.map((s, idx) => ({
+            name: this.customLegendLabels[s.name] || s.name,
+            icon: this.getLegendIcon(seriesConfigs[idx].style),
+            itemStyle: { color: seriesConfigs[idx].color }
+        }));
+
         const option = {
-            color: this.compareList.map(item => item.color),
-            toolbox: {
-                show: false
-            },
-            textStyle: {
-                fontFamily: 'Arial'
-            },
+            color: seriesConfigs.map(c => c.color),
+            toolbox: { show: false },
+            textStyle: { fontFamily: 'Arial' },
             title: [{
-                text: "NGI's Daily Natural Gas Prices",
+                text: titleText,
                 left: '3%',
                 top: '10',
                 textStyle: {
@@ -554,19 +745,12 @@ const DailyPriceCharts = {
                 left: 'center',
                 textStyle: {
                     fontFamily: 'Arial',
-                    fontSize: 12,
+                    fontSize: 13,
                     color: '#000'
                 },
-                itemWidth: 25,
-                itemHeight: 12,
-                data: limitedSeries.map((s, idx) => {
-                    const item = this.compareList[idx];
-                    const lineStyle = item ? item.style : 'solid';
-                    return {
-                        name: s.location_name,
-                        icon: this.legendIcons[lineStyle] || this.legendIcons.solid
-                    };
-                })
+                itemWidth: 30,
+                itemHeight: 14,
+                data: legendData
             },
             graphic: [
                 {
@@ -600,9 +784,26 @@ const DailyPriceCharts = {
                 {
                     type: 'text',
                     left: '3.5%',
+                    bottom: '7%',
+                    style: {
+                        text: "{bold|Note:} Forward Look data by trade date.",
+                        font: '12px Arial',
+                        rich: {
+                            bold: {
+                                fontWeight: 'bold',
+                                fontSize: 12,
+                                fontFamily: 'Arial'
+                            }
+                        },
+                        fill: '#000'
+                    }
+                },
+                {
+                    type: 'text',
+                    left: '3.5%',
                     bottom: '1.6%',
                     style: {
-                        text: "{bold|Source:} NGI's Daily Gas Price Index",
+                        text: "{bold|Source:} NGI's Forward Look",
                         font: '14px Arial',
                         rich: {
                             bold: {
@@ -617,54 +818,51 @@ const DailyPriceCharts = {
             ],
             tooltip: {
                 trigger: 'axis',
-                axisPointer: {
-                    type: 'cross'
-                }
+                axisPointer: { type: 'cross' }
             },
             grid: {
                 left: '7.7%',
                 right: '4%',
                 top: '28%',
-                bottom: '8%',
+                bottom: document.getElementById('hideYearCheckbox').checked ? '10%' : '14%',
                 containLabel: true
             },
             xAxis: {
                 type: 'category',
-                boundaryGap: false,
-                data: reformattedDates,
+                boundaryGap: document.getElementById('hideYearCheckbox').checked ? true : false,
+                data: document.getElementById('hideYearCheckbox').checked
+                    ? data.dates.map(d => d.replace(/\s+\d{4}$/, ''))
+                    : data.dates,
                 axisLabel: {
-                    rotate: 45,
+                    rotate: document.getElementById('hideYearCheckbox').checked ? 0 : 45,
                     interval: (index) => {
-                        const totalDataPoints = limitedDates.length;
+                        const totalDataPoints = data.dates.length;
                         const lastIndex = totalDataPoints - 1;
-                        const numIntervals = 12;
+                        const numIntervals = Math.min(12, lastIndex);
+                        if (numIntervals <= 0) return true;
                         const step = lastIndex / numIntervals;
                         const labelIndices = [];
                         for (let i = 0; i <= numIntervals; i++) {
                             labelIndices.push(Math.round(i * step));
                         }
-                        // Always include the last index to show the latest date
                         if (!labelIndices.includes(lastIndex)) {
                             labelIndices.push(lastIndex);
                         }
                         return labelIndices.includes(index);
                     },
-                    verticalAlign: 'top',
-                    align: 'right',
-                    fontSize: 13,
+                    verticalAlign: document.getElementById('hideYearCheckbox').checked ? 'middle' : 'top',
+                    align: document.getElementById('hideYearCheckbox').checked ? 'center' : 'right',
+                    margin: document.getElementById('hideYearCheckbox').checked ? 14 : 8,
+                    fontSize: document.getElementById('hideYearCheckbox').checked ? 14 : 13,
                     fontWeight: 510,
                     color: 'black'
                 },
                 axisLine: {
-                    lineStyle: {
-                        color: '#D3D3D3'
-                    }
+                    lineStyle: { color: '#D3D3D3' }
                 },
                 axisTick: {
                     alignWithLabel: true,
-                    lineStyle: {
-                        color: '#D3D3D3'
-                    }
+                    lineStyle: { color: '#D3D3D3' }
                 }
             },
             yAxis: {
@@ -677,19 +875,16 @@ const DailyPriceCharts = {
                     fontSize: 12,
                     color: 'black'
                 },
-                min: adjustedMinPrice,
-                max: adjustedMaxPrice,
+                min: adjustedMin,
+                max: adjustedMax,
                 interval: interval,
-                axisLine: {
-                    show: false
-                },
+                axisLine: { show: false },
                 axisLabel: {
                     formatter: function(value) {
                         if (value < 0) {
                             return `{red|$${value.toFixed(3)}}`;
-                        } else {
-                            return `$${value.toFixed(3)}`;
                         }
+                        return `$${value.toFixed(3)}`;
                     },
                     textStyle: {
                         fontFamily: 'Arial',
@@ -785,7 +980,9 @@ const DailyPriceCharts = {
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
 
-                const filename = 'NGI Daily Prices.webp';
+                const locationName = this.getLocationName();
+                const priceTypeLabel = this.getPriceTypeLabel();
+                const filename = `NGI ${locationName} Forward ${priceTypeLabel}.webp`;
 
                 link.download = filename;
                 link.href = url;
@@ -794,32 +991,26 @@ const DailyPriceCharts = {
                 document.body.removeChild(link);
                 URL.revokeObjectURL(url);
 
-                this.log(`Chart downloaded as <strong>${filename}</strong> (828×447px WebP)`);
+                this.log(`Chart downloaded as <strong>${filename}</strong> (828\u00d7447px WebP)`);
             }, 'image/webp');
         };
 
         img.src = fullChartBase64;
     },
 
-    rerenderChart: function() {
-        if (this.lastApiResponse) {
-            this.renderChart(this.lastApiResponse);
-        }
-    },
-
     exportColors: function() {
-        if (!this.compareList.length) {
+        if (!this.tradeDates.length) {
             alert('No color settings to export.');
             return;
         }
         const data = {
-            preset: 'Daily Spot Multi Colors',
-            colors: this.compareList.map(item => ({ color: item.color, style: item.style }))
+            preset: 'Forward Curve Colors',
+            colors: this.tradeDates.map(td => ({ color: td.color, style: td.style }))
         };
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.download = 'daily-spot-multi-colors.json';
+        link.download = 'forward-curve-colors.json';
         link.href = url;
         document.body.appendChild(link);
         link.click();
@@ -839,23 +1030,25 @@ const DailyPriceCharts = {
                 if (!data.colors || !Array.isArray(data.colors)) {
                     throw new Error('Invalid format: missing colors array');
                 }
+                // Apply imported colors to existing trade dates
                 data.colors.forEach((c, i) => {
-                    if (i < this.compareList.length) {
-                        if (c.color) this.compareList[i].color = c.color;
-                        if (c.style) this.compareList[i].style = c.style;
+                    if (i < this.tradeDates.length) {
+                        if (c.color) this.tradeDates[i].color = c.color;
+                        if (c.style) this.tradeDates[i].style = c.style;
                     }
                 });
-                this.renderCompareList();
-                if (this.lastApiResponse) this.rerenderChart();
+                this.renderTradeDatesList();
+                if (this.fullApiResponse) this.rerenderChart();
                 this.log(`Imported color settings from <strong>${file.name}</strong>`);
             } catch (err) {
                 alert('Could not read color file: ' + err.message);
             }
         };
         reader.readAsText(file);
+        // Reset so the same file can be re-imported
         e.target.value = '';
     }
 };
 
 // Initialize on DOM ready
-document.addEventListener('DOMContentLoaded', () => DailyPriceCharts.init());
+document.addEventListener('DOMContentLoaded', () => ForwardCurveCharts.init());

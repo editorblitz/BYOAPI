@@ -43,11 +43,18 @@ const LNGApp = {
 
     setupDates: function() {
         const today = new Date();
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(today.getDate() - 30);
+        const y1 = today.getFullYear();
+        const m1 = String(today.getMonth() + 1).padStart(2, '0');
+        const d1 = String(today.getDate()).padStart(2, '0');
 
-        document.getElementById('endDate').value = today.toISOString().split('T')[0];
-        document.getElementById('startDate').value = thirtyDaysAgo.toISOString().split('T')[0];
+        const thirtyDaysAgo = new Date(today);
+        thirtyDaysAgo.setDate(today.getDate() - 30);
+        const y2 = thirtyDaysAgo.getFullYear();
+        const m2 = String(thirtyDaysAgo.getMonth() + 1).padStart(2, '0');
+        const d2 = String(thirtyDaysAgo.getDate()).padStart(2, '0');
+
+        document.getElementById('endDate').value = `${y1}-${m1}-${d1}`;
+        document.getElementById('startDate').value = `${y2}-${m2}-${d2}`;
     },
 
     bindEvents: function() {
@@ -349,16 +356,16 @@ const LNGApp = {
 
         while (currentDate <= endDate) {
             dates.push(new Date(currentDate));
-            currentDate.setDate(currentDate.getDate() + 1);
+            currentDate.setUTCDate(currentDate.getUTCDate() + 1);
         }
 
         return dates;
     },
 
     formatDate: function(date) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(date.getUTCDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     },
 

@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}Spot + Forward Charts - NGI Data Tools{% endblock %}
+
+{% block head %}
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' }
+                    }
+                }
+            }
+        };
+    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/daily_prices_pro.css') }}">
+    <style>
+        body {
+            background: #f8fafc;
+            padding-bottom: 2rem;
+        }
+        .main-content {
+            padding: 0;
+            padding-top: calc(52px + 1.5rem); /* Offset for fixed navbar */
+            max-width: 100%;
+        }
+        .footer {
+            display: none;
+        }
+        #chart {
+            width: 750px;
+            height: 400px;
+            margin: 0 auto;
+        }
+        .color-picker {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            min-width: 24px;
+            border: 1px solid #d1d5db;
+            border-radius: 2px;
+            padding: 1px;
+            cursor: pointer;
+            background: none;
+        }
+        .color-picker::-webkit-color-swatch-wrapper { padding: 0; }
+        .color-picker::-webkit-color-swatch { border: none; border-radius: 1px; }
+        .color-picker::-moz-color-swatch { border: none; border-radius: 1px; }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="daily-prices-pro-container bg-white text-gray-900 min-h-[70vh]">
+    <div class="py-4">
+        <div class="flex gap-4">
+            <!-- Sidebar -->
+            <aside class="w-80 flex-shrink-0 bg-white border border-gray-300 flex flex-col max-h-[calc(100vh-10rem)] overflow-hidden ml-4">
+                <div class="p-4 flex-1 overflow-y-auto custom-scroll space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 uppercase mb-1">Region</label>
+                        <select id="regionSelect" class="w-full px-2 py-1 border border-gray-300 text-sm bg-white mb-2"></select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 uppercase mb-1">Location</label>
+                        <select id="locationSelect" class="w-full px-2 py-1 border border-gray-300 text-sm bg-white"></select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 uppercase mb-1">Spot History</label>
+                        <select id="spotHistorySelect" class="w-full px-2 py-1 border border-gray-300 text-sm bg-white">
+                            <option value="3m">3 Months</option>
+                            <option value="6m" selected>6 Months</option>
+                            <option value="1y">1 Year</option>
+                            <option value="2y">2 Years</option>
+                            <option value="3y">3 Years</option>
+                            <option value="4y">4 Years</option>
+                            <option value="5y">5 Years</option>
+                        </select>
+                    </div>
+
+                    <hr class="border-gray-200">
+
+                    <!-- Series Colors & Styles -->
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 uppercase mb-2">Line Styles</label>
+                        <div id="seriesStylesContainer" class="space-y-2">
+                            <div class="flex items-center gap-2">
+                                <input type="color" id="spotColor" value="#1d4063" class="color-picker">
+                                <select id="spotStyle" class="px-1 py-0.5 border border-gray-300 text-xs bg-white w-16">
+                                    <option value="solid" selected>Solid</option>
+                                    <option value="dashed">Dash</option>
+                                    <option value="dotted">Dot</option>
+                                </select>
+                                <span class="text-xs text-gray-600">Daily Spot</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="color" id="fwdColor" value="#37b4ee" class="color-picker">
+                                <select id="fwdStyle" class="px-1 py-0.5 border border-gray-300 text-xs bg-white w-16">
+                                    <option value="solid">Solid</option>
+                                    <option value="dashed">Dash</option>
+                                    <option value="dotted" selected>Dot</option>
+                                </select>
+                                <span class="text-xs text-gray-600">Forward Look</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-gray-200">
+
+                    <button id="generateBtn" class="w-full bg-gray-900 text-white px-4 py-2 text-sm font-semibold hover:bg-gray-800 transition-colors">
+                        Generate Chart
+                    </button>
+                </div>
+
+                <!-- Download button at bottom -->
+                <div class="p-4 border-t border-gray-200 space-y-2">
+                    <button id="downloadBtn" class="w-full bg-green-600 text-white px-4 py-2 text-sm font-semibold hover:bg-green-700 transition-colors hidden">
+                        Download WebP
+                    </button>
+                    <div class="flex gap-2 pt-1">
+                        <button id="exportColorsBtn" class="flex-1 text-xs text-gray-400 hover:text-gray-600 transition-colors">Export Colors</button>
+                        <span class="text-gray-300 text-xs">|</span>
+                        <button id="importColorsBtn" class="flex-1 text-xs text-gray-400 hover:text-gray-600 transition-colors">Import Colors</button>
+                        <input type="file" id="importColorsFile" accept=".json" class="hidden">
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Chart Area -->
+            <main class="flex-1 mr-4">
+                <div class="bg-white border border-gray-300 p-4">
+                    <div id="chart"></div>
+                </div>
+                <!-- Chart editing controls (below chart) -->
+                <div id="chartControlsSection" class="hidden mt-2">
+                    <div class="flex justify-between text-xs text-gray-500">
+                        <!-- Left: Title & Legend editors -->
+                        <div class="space-y-2">
+                            <!-- Title Editor -->
+                            <div>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span>Title:</span>
+                                    <label class="flex items-center gap-1 cursor-pointer">
+                                        <input type="checkbox" id="twoLineTitleCheckbox" class="w-3.5 h-3.5">
+                                        <span>Two lines</span>
+                                    </label>
+                                </div>
+                                <div class="flex flex-col gap-1">
+                                    <input id="titleLine1" type="text" class="px-1.5 py-0.5 border border-gray-300 text-sm bg-white w-96">
+                                    <input id="titleLine2" type="text" class="px-1.5 py-0.5 border border-gray-300 text-sm bg-white w-96 hidden">
+                                    <button id="applyTitleBtn" class="mt-0.5 px-2 py-0.5 bg-gray-200 text-gray-600 text-xs hover:bg-gray-300 border border-gray-300 w-fit">
+                                        Apply
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- Legend Labels -->
+                            <div>
+                                <span class="mb-1 block">Legend:</span>
+                                <div id="legendEditorContainer" class="flex flex-col gap-1"></div>
+                                <button id="applyLegendBtn" class="mt-1 px-2 py-0.5 bg-gray-200 text-gray-600 text-xs hover:bg-gray-300 border border-gray-300">
+                                    Apply
+                                </button>
+                            </div>
+                            <!-- Note / Source -->
+                            <div>
+                                <span class="mb-1 block">Note / Source:</span>
+                                <div class="flex flex-col gap-1">
+                                    <input id="noteInput" type="text" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-96">
+                                    <input id="sourceInput" type="text" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-96">
+                                    <button id="applyNoteSourceBtn" class="mt-0.5 px-2 py-0.5 bg-gray-200 text-gray-600 text-xs hover:bg-gray-300 border border-gray-300 w-fit">
+                                        Apply
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Right: Forward contracts & checkboxes -->
+                        <div class="space-y-2 text-right">
+                            <!-- Forward Contract Range -->
+                            <div id="contractRangeSection" class="hidden">
+                                <div class="flex items-center gap-2">
+                                    <span>Forward contracts:</span>
+                                    <select id="contractFrom" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white"></select>
+                                    <span>to</span>
+                                    <select id="contractTo" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white"></select>
+                                    <button id="updateContractRangeBtn" class="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs hover:bg-gray-300 border border-gray-300">
+                                        Update
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- Y-Axis Range -->
+                            <div class="flex items-center gap-2 justify-end">
+                                <span>Y-axis:</span>
+                                <input type="number" id="yAxisMin" step="0.5" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-20" placeholder="Min">
+                                <span>to</span>
+                                <input type="number" id="yAxisMax" step="0.5" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-20" placeholder="Max">
+                                <button id="applyYAxisBtn" class="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs hover:bg-gray-300 border border-gray-300">
+                                    Apply
+                                </button>
+                                <button id="resetYAxisBtn" class="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs hover:bg-gray-300 border border-gray-300">
+                                    Reset
+                                </button>
+                            </div>
+                            <!-- X-Axis Options -->
+                            <div class="flex flex-col gap-0.5 items-end">
+                                <label class="flex items-center gap-1.5 cursor-pointer">
+                                    <input type="checkbox" id="hideYearCheckbox" class="w-3.5 h-3.5">
+                                    <span>Hide year on x-axis</span>
+                                </label>
+                                <label class="flex items-center gap-1.5 cursor-pointer">
+                                    <input type="checkbox" id="hideMonthCheckbox" class="w-3.5 h-3.5">
+                                    <span>Hide month on x-axis</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+</div>
+
+<div class="daily-prices-log fixed bottom-0 left-0 right-0 z-40">
+    <div id="logDrawer" class="bg-gray-900 border-t border-gray-700 transition-all duration-300 ease-in-out h-0 overflow-hidden">
+        <div id="logContent" class="h-64 p-4 font-mono text-xs overflow-y-auto custom-scroll text-gray-300"></div>
+    </div>
+    <button id="logToggle" class="w-full bg-gray-800 border-t border-gray-700 h-8 flex items-center justify-between px-4 text-xs font-medium text-gray-300 hover:text-white hover:bg-gray-700">
+        <div class="flex items-center gap-3">
+            <div id="statusDot" class="w-2 h-2 bg-green-500"></div>
+            <span id="statusLabel" class="uppercase tracking-wider font-semibold">Ready</span>
+            <span class="w-px h-3 bg-gray-600 mx-1"></span>
+            <span id="lastLogMsg" class="font-mono truncate max-w-md text-gray-400">System ready</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <svg id="logArrow" class="transition-transform duration-300" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
+        </div>
+    </button>
+</div>
+
+<script src="{{ url_for('static', filename='js/spot_forward_charts.js') }}"></script>
+{% endblock %}

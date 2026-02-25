@@ -53,6 +53,20 @@ def daily_highlow_charts_page():
     return render_template('daily_highlow_charts.html')
 
 
+@quick_charts_bp.route('/forward-curve-charts')
+@require_api_creds
+def forward_curve_charts_page():
+    """Render the Forward Curve Charts page."""
+    return render_template('forward_curve_charts.html')
+
+
+@quick_charts_bp.route('/spot-forward-charts')
+@require_api_creds
+def spot_forward_charts_page():
+    """Render the Spot + Forward Charts page."""
+    return render_template('spot_forward_charts.html')
+
+
 @quick_charts_bp.route('/api/quick-charts')
 @require_api_creds_json
 def api_quick_charts():

@@ -61,6 +61,13 @@ const NetbacksApp = {
         }
     },
 
+    formatLocalDate: function(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    },
+
     setupDates: function(latestIssueDate = null) {
         let latestIssueDateObj;
 
@@ -73,15 +80,18 @@ const NetbacksApp = {
         const twoMonthsAgo = new Date(latestIssueDateObj);
         twoMonthsAgo.setMonth(latestIssueDateObj.getMonth() - 2);
 
+        const latestStr = this.formatLocalDate(latestIssueDateObj);
+        const twoMonthsAgoStr = this.formatLocalDate(twoMonthsAgo);
+
         // Forward Curve mode - single issue date
-        document.getElementById('issueDate').value = latestIssueDateObj.toISOString().split('T')[0];
-        this.state.issueDate = latestIssueDateObj.toISOString().split('T')[0];
+        document.getElementById('issueDate').value = latestStr;
+        this.state.issueDate = latestStr;
 
         // Time Series mode - date range
-        document.getElementById('endDate').value = latestIssueDateObj.toISOString().split('T')[0];
-        document.getElementById('startDate').value = twoMonthsAgo.toISOString().split('T')[0];
-        this.state.endDate = latestIssueDateObj.toISOString().split('T')[0];
-        this.state.startDate = twoMonthsAgo.toISOString().split('T')[0];
+        document.getElementById('endDate').value = latestStr;
+        document.getElementById('startDate').value = twoMonthsAgoStr;
+        this.state.endDate = latestStr;
+        this.state.startDate = twoMonthsAgoStr;
     },
 
     setupContractMonths: function() {

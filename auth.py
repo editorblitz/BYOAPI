@@ -257,8 +257,6 @@ def login():
     if request.method == 'POST':
         email = request.form.get('email', '').strip()
         api_key = request.form.get('api_key', '').strip()
-        remember_me = request.form.get('remember_me') == 'on'
-
         # Validate inputs
         if not email or not api_key:
             flash('Please provide both email and API key.', 'error')
@@ -272,17 +270,13 @@ def login():
         # Credentials valid - set up session
         session.clear()
 
-        # Calculate expiration
-        if remember_me:
-            expires_at = datetime.utcnow() + timedelta(days=7)
-        else:
-            expires_at = datetime.utcnow() + timedelta(hours=8)
+        # Calculate expiration (8 hours)
+        expires_at = datetime.utcnow() + timedelta(hours=8)
 
         # Store encrypted credentials
         session['ngi_email_enc'] = encrypt_value(email)
         session['ngi_key_enc'] = encrypt_value(api_key)
         session['expires_at'] = expires_at.isoformat()
-        session['remember_me'] = remember_me
         session['user_email'] = email  # Store email unencrypted for display purposes only
 
         flash('Successfully logged in!', 'success')

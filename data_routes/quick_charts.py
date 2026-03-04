@@ -25,11 +25,11 @@ def midday_charts_page():
     return render_template('midday_charts.html')
 
 
-@quick_charts_bp.route('/daily-price-charts')
+@quick_charts_bp.route('/daily-spot-charts-multi')
 @require_api_creds
-def daily_price_charts_page():
+def daily_spot_charts_multi_page():
     """Render the Daily Spot Charts - Multi page."""
-    return render_template('daily_price_charts.html')
+    return render_template('daily_spot_charts_multi.html')
 
 
 @quick_charts_bp.route('/midday-charts-multi')

@@ -32,12 +32,15 @@ const App = {
                 { name: 'Texas Eastern S. TX', value: 'STXTETCO' },
                 { name: 'Transco Zone 1', value: 'STXST30' },
                 { name: 'Tres Palacios', value: 'STX3PAL' },
+                { name: 'Tres Palacios - Injection', value: 'STX3PALINJ' },
+                { name: 'Tres Palacios - Withdrawal', value: 'STX3PALWD' },
                 { name: 'S. TX Regional Avg.', value: 'STXRAVG' }
             ],
             'East Texas': [
                 { name: 'Atmos Zone 3', value: 'ETXATMOSZ3' },
                 { name: 'Carthage', value: 'ETXCARTH' },
                 { name: 'Golden Triangle Storage', value: 'ETXGLDTRI' },
+                { name: 'Gulf South Pool 16', value: 'ETXGS16P' },
                 { name: 'Houston Ship Channel', value: 'ETXHSHIP' },
                 { name: 'Katy', value: 'ETXKATY' },
                 { name: 'Moss Bluff', value: 'ETXMBSF' },
@@ -46,14 +49,16 @@ const App = {
                 { name: 'Texas Eastern E. TX', value: 'ETXTETCO' },
                 { name: 'Tolar Hub', value: 'OTHTOLAR' },
                 { name: 'Transco Zone 2', value: 'ETXST45' },
+                { name: 'Transco Zone 2 non-St. 45', value: 'ETXNONST45' },
+                { name: 'Transco Zone 2 St. 45', value: 'ETXST45ONLY' },
                 { name: 'E. TX Regional Avg.', value: 'ETXRAVG' }
             ],
             'West Texas': [
+                { name: 'El Paso - Keystone & Waha Pools', value: 'WTXEPKPWP' },
                 { name: 'El Paso Permian', value: 'WTXEPP' },
                 { name: 'El Paso - Keystone Pool', value: 'WTXEPKEY' },
                 { name: 'El Paso - Plains Pool', value: 'WTXEPPL' },
                 { name: 'El Paso - Waha Pool', value: 'WTXEPWAHA' },
-                { name: 'Northern Natural Gas 1-7', value: 'WTXNNG' },
                 { name: 'Oneok WesTex', value: 'WTXONEOK' },
                 { name: 'Transwestern', value: 'WTXTW' },
                 { name: 'Transwestern - Central', value: 'WTXTWCENT' },
@@ -86,8 +91,6 @@ const App = {
                 { name: 'REX into ANR - Shelby', value: 'MCWREXANR' },
                 { name: 'REX into MGT - Edgar', value: 'MCWREXMGT' },
                 { name: 'REX into NGPL - Moultrie', value: 'MCWREXNGPL' },
-                { name: 'REX into PEPL - Putnam', value: 'MCWREXPEPL' },
-                { name: 'REX into Trunk - Douglas', value: 'MCWREXTRNK' },
                 { name: 'Midwest Regional Avg.', value: 'MWERAVG' }
             ],
             'Midcontinent': [
@@ -106,7 +109,6 @@ const App = {
             ],
             'North Louisiana': [
                 { name: 'Enable South', value: 'NLACPTS' },
-                { name: 'NGPL Gulf Coast Mainline', value: 'NLANGPLGULFML' },
                 { name: 'Perryville', value: 'NLAPERRY' },
                 { name: 'Texas Eastern, M1, 24', value: 'ALATETM124' },
                 { name: 'Texas Gas Zone 1', value: 'ETXTGT' },
@@ -127,6 +129,7 @@ const App = {
                 { name: 'Tennessee Line 800', value: 'SLAT800' },
                 { name: 'Texas Eastern E. LA', value: 'SLATETCOE' },
                 { name: 'Texas Eastern W. LA', value: 'SLATETCOW' },
+                { name: 'Transco Zone 3', value: 'SLATRANZ3' },
                 { name: 'Transco Zone 3 non-St. 65', value: 'SLANONST65' },
                 { name: 'Transco Zone 3 St. 65', value: 'SLAST65' },
                 { name: 'Trunkline E. LA', value: 'SLATRNKE' },
@@ -146,6 +149,7 @@ const App = {
                 { name: 'Transco Zone 5', value: 'NEATRANZ5' },
                 { name: 'Transco Zone 5 North', value: 'NEATZ5WGL' },
                 { name: 'Transco Zone 5 South', value: 'NEATZ5NWGL' },
+                { name: 'Transco Zone 5 St. 165', value: 'SEST165' },
                 { name: 'Southeast Regional Avg.', value: 'SEREGAVG' }
             ],
             'Appalachia': [
@@ -186,6 +190,8 @@ const App = {
             ],
             'Rockies': [
                 { name: 'Cheyenne Hub', value: 'RMTCHEY' },
+                { name: 'Cheyenne Hub - Other', value: 'RMTCHEYOTH' },
+                { name: 'REX Cheyenne Compression Pool', value: 'RMTREXPL' },
                 { name: 'CIG', value: 'RMTCIG' },
                 { name: 'CIG DJ Basin', value: 'RMTCIGDJ' },
                 { name: 'El Paso Bondad', value: 'RMTEPBON' },
@@ -196,7 +202,7 @@ const App = {
                 { name: 'Northwest Sumas', value: 'RMTSUMAS' },
                 { name: 'Northwest Wyoming Pool', value: 'RMTNWW' },
                 { name: 'Opal', value: 'RMTOPAL' },
-                { name: 'Questar', value: 'RMTQUEST' },
+                { name: 'MountainWest', value: 'RMTQUEST' },
                 { name: 'Ruby - Receipts', value: 'RMTRUBYR' },
                 { name: 'Stanfield', value: 'RMTSTAN' },
                 { name: 'Transwestern San Juan', value: 'RMTTWSJ' },

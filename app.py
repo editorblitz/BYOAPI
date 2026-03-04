@@ -209,7 +209,7 @@ def dashboard():
         {
             'name': 'Daily Spot Charts - Multi',
             'description': 'Compare multiple locations on publication-ready daily price charts',
-            'url': url_for('quick_charts.daily_price_charts_page'),
+            'url': url_for('quick_charts.daily_spot_charts_multi_page'),
             'icon': 'chart-bar',
             'category': 'charts',
             'image': 'daily-spot-charts-multi.png'

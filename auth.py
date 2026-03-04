@@ -165,41 +165,52 @@ def ngi_request(path: str, method: str = 'GET', params: dict = None, json_data: 
         if not access_token:
             raise Exception("Failed to authenticate with NGI API")
 
-    # Make the actual API request
+    # Make the actual API request (with one retry on auth failure)
     url = f"{NGI_API_BASE}/{path.lstrip('/')}"
-    headers = {
-        'Authorization': f'Bearer {access_token}',
-        'Accept': 'application/json'
-    }
 
-    try:
-        if method.upper() == 'GET':
-            response = requests.get(url, headers=headers, params=params, timeout=30)
-        elif method.upper() == 'POST':
-            response = requests.post(url, headers=headers, params=params, json=json_data, timeout=30)
-        else:
-            raise ValueError(f"Unsupported HTTP method: {method}")
+    for attempt in range(2):
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Accept': 'application/json'
+        }
 
-        response.raise_for_status()
+        try:
+            if method.upper() == 'GET':
+                response = requests.get(url, headers=headers, params=params, timeout=30)
+            elif method.upper() == 'POST':
+                response = requests.post(url, headers=headers, params=params, json=json_data, timeout=30)
+            else:
+                raise ValueError(f"Unsupported HTTP method: {method}")
 
-        # Check content type and handle non-JSON responses
-        content_type = response.headers.get('Content-Type', '')
-        if not response.content:
-            raise Exception("NGI API returned empty response")
+            # If we get an auth-related error, refresh the token and retry once
+            if response.status_code in (401, 403, 493) and attempt == 0:
+                session.pop('ngi_access_token', None)
+                session.pop('ngi_token_expires', None)
+                access_token = _get_ngi_token(email, api_key)
+                if not access_token:
+                    raise Exception("Failed to re-authenticate with NGI API")
+                continue
 
-        if 'application/json' not in content_type:
-            # Try to parse anyway, but provide better error if it fails
-            try:
-                return response.json()
-            except ValueError:
-                # Truncate response for error message
-                preview = response.text[:200] if response.text else '(empty)'
-                raise Exception(f"NGI API returned non-JSON response: {preview}")
+            response.raise_for_status()
 
-        return response.json()
+            # Check content type and handle non-JSON responses
+            content_type = response.headers.get('Content-Type', '')
+            if not response.content:
+                raise Exception("NGI API returned empty response")
 
-    except requests.RequestException as e:
-        raise Exception(f"NGI API request failed: {str(e)}")
+            if 'application/json' not in content_type:
+                # Try to parse anyway, but provide better error if it fails
+                try:
+                    return response.json()
+                except ValueError:
+                    # Truncate response for error message
+                    preview = response.text[:200] if response.text else '(empty)'
+                    raise Exception(f"NGI API returned non-JSON response: {preview}")
+
+            return response.json()
+
+        except requests.RequestException as e:
+            raise Exception(f"NGI API request failed: {str(e)}")
 
 
 def _get_ngi_token(email: str, api_key: str) -> str:

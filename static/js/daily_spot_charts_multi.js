@@ -577,7 +577,7 @@ const DailyPriceCharts = {
                 show: false
             },
             textStyle: {
-                fontFamily: 'Arial'
+                fontFamily: "'Inter', Arial, sans-serif"
             },
             title: [{
                 text: "NGI's Daily Natural Gas Prices",
@@ -590,15 +590,17 @@ const DailyPriceCharts = {
                 }
             }],
             legend: {
-                top: '70',
+                top: '72',
                 left: 'center',
                 textStyle: {
-                    fontFamily: 'Arial',
-                    fontSize: 12,
+                    fontFamily: "'Inter', Arial, sans-serif",
+                    fontSize: 14,
+                    fontWeight: 520,
                     color: '#000'
                 },
-                itemWidth: 25,
+                itemWidth: 28,
                 itemHeight: 12,
+                itemGap: 16,
                 data: limitedSeries.map((s, idx) => {
                     const item = this.compareList[idx];
                     const lineStyle = item ? item.style : 'solid';
@@ -643,12 +645,12 @@ const DailyPriceCharts = {
                     bottom: '1.6%',
                     style: {
                         text: "{bold|Source:} NGI's Daily Gas Price Index",
-                        font: '14px Arial',
+                        font: "14px 'Inter', Arial, sans-serif",
                         rich: {
                             bold: {
                                 fontWeight: 'bold',
                                 fontSize: 14,
-                                fontFamily: 'Arial'
+                                fontFamily: "'Inter', Arial, sans-serif"
                             }
                         },
                         fill: '#000'
@@ -664,8 +666,8 @@ const DailyPriceCharts = {
             grid: {
                 left: '7.7%',
                 right: '4%',
-                top: '28%',
-                bottom: '8%',
+                top: '25%',
+                bottom: '7%',
                 containLabel: true
             },
             xAxis: {
@@ -692,7 +694,7 @@ const DailyPriceCharts = {
                     verticalAlign: 'top',
                     align: 'right',
                     fontSize: 13,
-                    fontWeight: 510,
+                    fontWeight: 550,
                     color: 'black'
                 },
                 axisLine: {
@@ -732,14 +734,14 @@ const DailyPriceCharts = {
                         }
                     },
                     textStyle: {
-                        fontFamily: 'Arial',
+                        fontFamily: "'Inter', Arial, sans-serif",
                         fontSize: 14,
                         color: 'black'
                     },
                     rich: {
                         red: {
                             color: 'red',
-                            fontFamily: 'Arial',
+                            fontFamily: "'Inter', Arial, sans-serif",
                             fontSize: 13
                         }
                     }

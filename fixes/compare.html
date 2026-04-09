@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chart Comparison Tool</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #1a1a1a; color: #ccc; padding: 20px; }
+        h1 { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #fff; }
+
+        .controls {
+            display: flex; align-items: center; gap: 16px;
+            margin-bottom: 16px; flex-wrap: wrap;
+        }
+        .controls label { font-size: 13px; }
+        .controls input[type="file"] { font-size: 13px; }
+        .controls select, .controls button {
+            font-size: 13px; padding: 4px 10px;
+            background: #333; color: #ccc; border: 1px solid #555; cursor: pointer;
+        }
+        .controls button:hover { background: #444; }
+
+        .slider-group {
+            display: flex; align-items: center; gap: 8px;
+        }
+        .slider-group input[type="range"] { width: 200px; }
+        .slider-group span { font-size: 12px; min-width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
+
+        .compare-container {
+            position: relative; display: inline-block;
+            border: 1px solid #444; background: #fff;
+        }
+        .compare-container img {
+            display: block; max-width: 100%;
+        }
+        .compare-container .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        }
+        .compare-container .overlay img {
+            width: 100%; height: 100%; object-fit: contain;
+        }
+
+        /* Side-by-side mode */
+        .side-by-side {
+            display: flex; gap: 16px; align-items: flex-start;
+        }
+        .side-by-side .panel {
+            border: 1px solid #444; background: #fff; flex: 1; min-width: 0;
+        }
+        .side-by-side .panel img {
+            display: block; width: 100%;
+        }
+        .side-by-side .panel-label {
+            background: #333; color: #aaa; font-size: 11px; padding: 4px 8px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+
+        .placeholder {
+            display: flex; align-items: center; justify-content: center;
+            width: 828px; height: 447px; background: #2a2a2a; color: #666;
+            font-size: 14px; border: 2px dashed #444;
+        }
+
+        .mode-info { font-size: 11px; color: #888; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <h1>Chart Comparison Tool</h1>
+
+    <div class="controls">
+        <label>Generated WebP:</label>
+        <input type="file" id="webpInput" accept=".webp,.png,.jpg,.jpeg">
+
+        <select id="modeSelect">
+            <option value="overlay">Overlay (fade)</option>
+            <option value="side-by-side">Side by Side</option>
+        </select>
+
+        <div class="slider-group" id="sliderGroup">
+            <label>Target opacity:</label>
+            <input type="range" id="opacitySlider" min="0" max="100" value="0">
+            <span id="opacityValue">0%</span>
+        </div>
+
+        <button id="swapBtn" style="display:none;">Swap Order</button>
+    </div>
+
+    <div id="overlayView">
+        <div class="compare-container" id="compareBox">
+            <img id="baseImg" src="chart-v2.png" alt="Target" style="display:none;">
+            <div class="placeholder" id="basePlaceholder">Load a generated WebP to compare</div>
+            <div class="overlay" id="overlayLayer" style="display:none;">
+                <img src="chart-v2.png" alt="Target overlay">
+            </div>
+        </div>
+        <div class="mode-info">Slide right to fade in the target PNG over your generated chart.</div>
+    </div>
+
+    <div id="sideView" style="display:none;">
+        <div class="side-by-side">
+            <div class="panel">
+                <div class="panel-label" id="leftLabel">Generated</div>
+                <div id="leftPanel">
+                    <div class="placeholder" style="width:100%;height:300px;">Load a generated WebP</div>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-label" id="rightLabel">Target</div>
+                <div id="rightPanel">
+                    <img src="chart-v2.png" alt="Target">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const webpInput = document.getElementById('webpInput');
+        const modeSelect = document.getElementById('modeSelect');
+        const opacitySlider = document.getElementById('opacitySlider');
+        const opacityValue = document.getElementById('opacityValue');
+        const sliderGroup = document.getElementById('sliderGroup');
+        const swapBtn = document.getElementById('swapBtn');
+        const overlayView = document.getElementById('overlayView');
+        const sideView = document.getElementById('sideView');
+        const overlayLayer = document.getElementById('overlayLayer');
+        const baseImg = document.getElementById('baseImg');
+        const basePlaceholder = document.getElementById('basePlaceholder');
+
+        let generatedURL = null;
+        let swapped = false;
+
+        webpInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (generatedURL) URL.revokeObjectURL(generatedURL);
+            generatedURL = URL.createObjectURL(file);
+            loadGenerated();
+        });
+
+        function loadGenerated() {
+            if (!generatedURL) return;
+
+            // Overlay mode
+            baseImg.src = generatedURL;
+            baseImg.style.display = 'block';
+            basePlaceholder.style.display = 'none';
+            overlayLayer.style.display = 'block';
+            overlayLayer.style.opacity = opacitySlider.value / 100;
+
+            // Side-by-side mode
+            const leftPanel = document.getElementById('leftPanel');
+            leftPanel.innerHTML = `<img src="${generatedURL}" alt="Generated">`;
+
+            updateMode();
+        }
+
+        opacitySlider.addEventListener('input', () => {
+            const val = opacitySlider.value;
+            opacityValue.textContent = val + '%';
+            overlayLayer.style.opacity = val / 100;
+        });
+
+        modeSelect.addEventListener('change', updateMode);
+
+        swapBtn.addEventListener('click', () => {
+            swapped = !swapped;
+            const leftLabel = document.getElementById('leftLabel');
+            const rightLabel = document.getElementById('rightLabel');
+            const leftPanel = document.getElementById('leftPanel');
+            const rightPanel = document.getElementById('rightPanel');
+
+            if (swapped) {
+                leftLabel.textContent = 'Target';
+                rightLabel.textContent = 'Generated';
+                leftPanel.innerHTML = `<img src="chart-v2.png" alt="Target">`;
+                rightPanel.innerHTML = generatedURL
+                    ? `<img src="${generatedURL}" alt="Generated">`
+                    : `<div class="placeholder" style="width:100%;height:300px;">Load a generated WebP</div>`;
+            } else {
+                leftLabel.textContent = 'Generated';
+                rightLabel.textContent = 'Target';
+                leftPanel.innerHTML = generatedURL
+                    ? `<img src="${generatedURL}" alt="Generated">`
+                    : `<div class="placeholder" style="width:100%;height:300px;">Load a generated WebP</div>`;
+                rightPanel.innerHTML = `<img src="chart-v2.png" alt="Target">`;
+            }
+        });
+
+        function updateMode() {
+            const mode = modeSelect.value;
+            if (mode === 'overlay') {
+                overlayView.style.display = 'block';
+                sideView.style.display = 'none';
+                sliderGroup.style.display = 'flex';
+                swapBtn.style.display = 'none';
+            } else {
+                overlayView.style.display = 'none';
+                sideView.style.display = 'block';
+                sliderGroup.style.display = 'none';
+                swapBtn.style.display = 'inline-block';
+            }
+        }
+
+        // Keyboard shortcut: hold T to toggle target at full opacity
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 't' || e.key === 'T') {
+                if (modeSelect.value === 'overlay') {
+                    overlayLayer.style.opacity = 1;
+                }
+            }
+        });
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 't' || e.key === 'T') {
+                if (modeSelect.value === 'overlay') {
+                    overlayLayer.style.opacity = opacitySlider.value / 100;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

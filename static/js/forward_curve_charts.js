@@ -729,7 +729,7 @@ const ForwardCurveCharts = {
         const option = {
             color: seriesConfigs.map(c => c.color),
             toolbox: { show: false },
-            textStyle: { fontFamily: 'Arial' },
+            textStyle: { fontFamily: "'Inter', Arial, sans-serif" },
             title: [{
                 text: titleText,
                 left: '3%',
@@ -741,15 +741,17 @@ const ForwardCurveCharts = {
                 }
             }],
             legend: {
-                top: '70',
+                top: '72',
                 left: 'center',
                 textStyle: {
-                    fontFamily: 'Arial',
+                    fontFamily: "'Inter', Arial, sans-serif",
                     fontSize: 13,
+                    fontWeight: 520,
                     color: '#000'
                 },
-                itemWidth: 30,
-                itemHeight: 14,
+                itemWidth: 28,
+                itemHeight: 12,
+                itemGap: 16,
                 data: legendData
             },
             graphic: [
@@ -787,12 +789,12 @@ const ForwardCurveCharts = {
                     bottom: '7%',
                     style: {
                         text: "{bold|Note:} Forward Look data by trade date.",
-                        font: '12px Arial',
+                        font: "12px 'Inter', Arial, sans-serif",
                         rich: {
                             bold: {
                                 fontWeight: 'bold',
                                 fontSize: 12,
-                                fontFamily: 'Arial'
+                                fontFamily: "'Inter', Arial, sans-serif"
                             }
                         },
                         fill: '#000'
@@ -804,12 +806,12 @@ const ForwardCurveCharts = {
                     bottom: '1.6%',
                     style: {
                         text: "{bold|Source:} NGI's Forward Look",
-                        font: '14px Arial',
+                        font: "14px 'Inter', Arial, sans-serif",
                         rich: {
                             bold: {
                                 fontWeight: 'bold',
                                 fontSize: 14,
-                                fontFamily: 'Arial'
+                                fontFamily: "'Inter', Arial, sans-serif"
                             }
                         },
                         fill: '#000'
@@ -821,9 +823,9 @@ const ForwardCurveCharts = {
                 axisPointer: { type: 'cross' }
             },
             grid: {
-                left: '7.7%',
+                left: '7.1%',
                 right: '4%',
-                top: '28%',
+                top: '25%',
                 bottom: document.getElementById('hideYearCheckbox').checked ? '10%' : '14%',
                 containLabel: true
             },
@@ -854,7 +856,7 @@ const ForwardCurveCharts = {
                     align: document.getElementById('hideYearCheckbox').checked ? 'center' : 'right',
                     margin: document.getElementById('hideYearCheckbox').checked ? 14 : 8,
                     fontSize: document.getElementById('hideYearCheckbox').checked ? 14 : 13,
-                    fontWeight: 510,
+                    fontWeight: 550,
                     color: 'black'
                 },
                 axisLine: {
@@ -887,14 +889,14 @@ const ForwardCurveCharts = {
                         return `$${value.toFixed(3)}`;
                     },
                     textStyle: {
-                        fontFamily: 'Arial',
+                        fontFamily: "'Inter', Arial, sans-serif",
                         fontSize: 14,
                         color: 'black'
                     },
                     rich: {
                         red: {
                             color: 'red',
-                            fontFamily: 'Arial',
+                            fontFamily: "'Inter', Arial, sans-serif",
                             fontSize: 13
                         }
                     }

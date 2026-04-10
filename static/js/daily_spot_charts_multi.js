@@ -534,7 +534,9 @@ const DailyPriceCharts = {
         const minPrice = Math.min(...allPrices);
         const maxPrice = Math.max(...allPrices);
 
-        const interval = this.calculateYAxisInterval(minPrice, maxPrice);
+        const yAxisInput = document.getElementById('yAxisInterval');
+        const customInterval = yAxisInput && yAxisInput.value ? parseFloat(yAxisInput.value) : null;
+        const interval = (customInterval && customInterval > 0) ? customInterval : this.calculateYAxisInterval(minPrice, maxPrice);
         const adjustedMinPrice = Math.floor(minPrice / interval) * interval;
         const adjustedMaxPrice = Math.ceil(maxPrice / interval) * interval;
 
@@ -666,8 +668,8 @@ const DailyPriceCharts = {
             grid: {
                 left: '7.7%',
                 right: '4%',
-                top: '25%',
-                bottom: '7%',
+                top: '27%',
+                bottom: '10%',
                 containLabel: true
             },
             xAxis: {
@@ -711,7 +713,7 @@ const DailyPriceCharts = {
             },
             yAxis: {
                 type: 'value',
-                name: '$US/MMBtu',
+                name: (document.getElementById('yAxisLabel') && document.getElementById('yAxisLabel').value.trim()) || '$US/MMBtu',
                 nameLocation: 'middle',
                 nameGap: 70,
                 nameTextStyle: {

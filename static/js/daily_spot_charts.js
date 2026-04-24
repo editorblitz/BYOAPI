@@ -6,6 +6,7 @@
 const DailySpotCharts = {
     chart: null,
     currentLocationName: '',
+    lastApiResponse: null, // Cached so the x-axis label mode can re-render without refetching
 
     // Location data
     locations: {
@@ -309,6 +310,9 @@ const DailySpotCharts = {
         document.getElementById('generateBtn').addEventListener('click', () => this.handleGenerate());
         document.getElementById('downloadBtn').addEventListener('click', () => this.downloadChart());
         document.getElementById('updateChartBtn').addEventListener('click', () => this.handleGenerate());
+        document.getElementById('xAxisLabelMode').addEventListener('change', () => {
+            if (this.lastApiResponse) this.renderChart(this.lastApiResponse);
+        });
     },
 
     handleGenerate: async function() {
@@ -357,6 +361,7 @@ const DailySpotCharts = {
 
             this.log(`Received ${singleData.dates.length} data points for daily chart.`);
 
+            this.lastApiResponse = singleData;
             this.renderChart(singleData);
             this.log(`Chart rendered: <strong>750×400px</strong> display (aspect ratio 15:8) • Exports as <strong>828×447px WebP</strong>`);
 
@@ -409,6 +414,10 @@ const DailySpotCharts = {
             };
             return `${day}-${monthMap[month]}-${year}`;
         });
+
+        const labelModeEl = document.getElementById('xAxisLabelMode');
+        const labelMode = labelModeEl ? labelModeEl.value : 'auto';
+        const labelIndexSet = this.calculateLabelIndices(limitedDates, labelMode);
 
         const option = {
             toolbox: {
@@ -493,21 +502,7 @@ const DailySpotCharts = {
                 data: reformattedDates,
                 axisLabel: {
                     rotate: 45,
-                    interval: (index) => {
-                        const totalDataPoints = limitedDates.length;
-                        const lastIndex = totalDataPoints - 1;
-                        const numIntervals = 12;
-                        const step = lastIndex / numIntervals;
-                        const labelIndices = [];
-                        for (let i = 0; i <= numIntervals; i++) {
-                            labelIndices.push(Math.round(i * step));
-                        }
-                        // Always include the last index to show the latest date
-                        if (!labelIndices.includes(lastIndex)) {
-                            labelIndices.push(lastIndex);
-                        }
-                        return labelIndices.includes(index);
-                    },
+                    interval: (index) => labelIndexSet.has(index),
                     verticalAlign: 'top',
                     align: 'right',
                     fontSize: 13,
@@ -595,6 +590,66 @@ const DailySpotCharts = {
         if (range > 8) return 2;
         if (range > 4) return 1;
         return 0.5;
+    },
+
+    // Returns a Set of indices into isoDates that should render an x-axis label.
+    // Mode selects the spacing strategy — see the UI dropdown for user-facing labels.
+    calculateLabelIndices: function(isoDates, mode) {
+        if (!isoDates || isoDates.length === 0) return new Set();
+        const n = isoDates.length;
+        const lastIdx = n - 1;
+        if (n === 1) return new Set([0]);
+
+        if (mode === 'all') {
+            const all = new Set();
+            for (let i = 0; i < n; i++) all.add(i);
+            return all;
+        }
+
+        if (mode === 'short') {
+            const TARGET = 12;
+            if (n <= TARGET) {
+                const all = new Set();
+                for (let i = 0; i < n; i++) all.add(i);
+                return all;
+            }
+            const step = Math.ceil(lastIdx / (TARGET - 1));
+            const indices = new Set();
+            for (let i = 0; i < n; i += step) indices.add(i);
+            indices.add(lastIdx);
+            return indices;
+        }
+
+        if (mode === 'weekly') {
+            const timestamps = isoDates.map(s => new Date(s + 'T00:00:00').getTime());
+            const closest = (targetMs) => {
+                let best = 0, bestDiff = Infinity;
+                for (let i = 0; i < n; i++) {
+                    const d = Math.abs(timestamps[i] - targetMs);
+                    if (d < bestDiff) { bestDiff = d; best = i; }
+                }
+                return best;
+            };
+            const indices = new Set([0, lastIdx]);
+            const cursor = new Date(timestamps[0]);
+            const daysToMon = (8 - cursor.getDay()) % 7;
+            cursor.setDate(cursor.getDate() + daysToMon);
+            while (cursor.getTime() <= timestamps[lastIdx]) {
+                indices.add(closest(cursor.getTime()));
+                cursor.setDate(cursor.getDate() + 7);
+            }
+            return indices;
+        }
+
+        // mode === 'auto' (default): original 12-interval float stepping with last pinned.
+        const numIntervals = 12;
+        const step = lastIdx / numIntervals;
+        const indices = new Set();
+        for (let i = 0; i <= numIntervals; i++) {
+            indices.add(Math.round(i * step));
+        }
+        indices.add(lastIdx);
+        return indices;
     },
 
     downloadChart: function() {

@@ -354,7 +354,16 @@ const ForwardCurveCharts = {
         document.getElementById('exportColorsBtn').addEventListener('click', () => this.exportColors());
         document.getElementById('importColorsBtn').addEventListener('click', () => document.getElementById('importColorsFile').click());
         document.getElementById('importColorsFile').addEventListener('change', (e) => this.importColors(e));
-        document.getElementById('hideYearCheckbox').addEventListener('change', () => {
+        document.getElementById('hideYearCheckbox').addEventListener('change', (e) => {
+            const sub = document.getElementById('showYearUnderJanCheckbox');
+            sub.disabled = !e.target.checked;
+            if (!e.target.checked) sub.checked = false;
+            if (this.fullApiResponse && this.chart) this.rerenderChart();
+        });
+        document.getElementById('showYearUnderJanCheckbox').addEventListener('change', () => {
+            if (this.fullApiResponse && this.chart) this.rerenderChart();
+        });
+        document.getElementById('xAxisLabelMode').addEventListener('change', () => {
             if (this.fullApiResponse && this.chart) this.rerenderChart();
         });
     },
@@ -829,33 +838,34 @@ const ForwardCurveCharts = {
                 bottom: document.getElementById('hideYearCheckbox').checked ? '10%' : '14%',
                 containLabel: true
             },
-            xAxis: {
+            xAxis: (() => {
+                const labelModeEl = document.getElementById('xAxisLabelMode');
+                const labelMode = labelModeEl ? labelModeEl.value : 'auto';
+                const labelIndexSet = this.calculateLabelIndices(data.dates, labelMode);
+                const hideYear = document.getElementById('hideYearCheckbox').checked;
+                const yearSubEl = document.getElementById('showYearUnderJanCheckbox');
+                const showYearUnderJan = hideYear && yearSubEl && yearSubEl.checked;
+                const rawDates = data.dates;
+                return {
                 type: 'category',
-                boundaryGap: document.getElementById('hideYearCheckbox').checked ? true : false,
-                data: document.getElementById('hideYearCheckbox').checked
-                    ? data.dates.map(d => d.replace(/\s+\d{4}$/, ''))
-                    : data.dates,
+                boundaryGap: hideYear,
+                data: hideYear ? data.dates.map(d => d.replace(/\s+\d{4}$/, '')) : data.dates,
                 axisLabel: {
-                    rotate: document.getElementById('hideYearCheckbox').checked ? 0 : 45,
-                    interval: (index) => {
-                        const totalDataPoints = data.dates.length;
-                        const lastIndex = totalDataPoints - 1;
-                        const numIntervals = Math.min(12, lastIndex);
-                        if (numIntervals <= 0) return true;
-                        const step = lastIndex / numIntervals;
-                        const labelIndices = [];
-                        for (let i = 0; i <= numIntervals; i++) {
-                            labelIndices.push(Math.round(i * step));
+                    rotate: hideYear ? 0 : 45,
+                    interval: (index) => labelIndexSet.has(index),
+                    formatter: showYearUnderJan ? function(value, index) {
+                        const raw = rawDates[index];
+                        const match = raw && raw.match(/^(\w+)\s+(\d+)$/);
+                        if (match && (match[1] === 'Jan' || index === 0)) {
+                            return `${match[1]}\n${match[2]}`;
                         }
-                        if (!labelIndices.includes(lastIndex)) {
-                            labelIndices.push(lastIndex);
-                        }
-                        return labelIndices.includes(index);
-                    },
-                    verticalAlign: document.getElementById('hideYearCheckbox').checked ? 'middle' : 'top',
-                    align: document.getElementById('hideYearCheckbox').checked ? 'center' : 'right',
-                    margin: document.getElementById('hideYearCheckbox').checked ? 14 : 8,
-                    fontSize: document.getElementById('hideYearCheckbox').checked ? 14 : 13,
+                        return value;
+                    } : undefined,
+                    verticalAlign: showYearUnderJan ? 'top' : (hideYear ? 'middle' : 'top'),
+                    align: hideYear ? 'center' : 'right',
+                    margin: hideYear ? 14 : 8,
+                    fontSize: hideYear ? 14 : 13,
+                    lineHeight: showYearUnderJan ? 18 : undefined,
                     fontWeight: 550,
                     color: 'black'
                 },
@@ -866,7 +876,8 @@ const ForwardCurveCharts = {
                     alignWithLabel: true,
                     lineStyle: { color: '#D3D3D3' }
                 }
-            },
+                };
+            })(),
             yAxis: {
                 type: 'value',
                 name: '$US/MMBtu',
@@ -923,6 +934,55 @@ const ForwardCurveCharts = {
         if (range > 8) return 2;
         if (range > 4) return 1;
         return 0.5;
+    },
+
+    // Returns a Set of indices into contractLabels (e.g. ["Jan 2024","Feb 2024",...])
+    // that should render an x-axis label. Modes match the UI dropdown.
+    calculateLabelIndices: function(contractLabels, mode) {
+        if (!contractLabels || contractLabels.length === 0) return new Set();
+        const n = contractLabels.length;
+        const lastIdx = n - 1;
+        if (n === 1) return new Set([0]);
+
+        if (mode === 'all') {
+            const all = new Set();
+            for (let i = 0; i < n; i++) all.add(i);
+            return all;
+        }
+
+        if (mode === 'short') {
+            const TARGET = 12;
+            if (n <= TARGET) {
+                const all = new Set();
+                for (let i = 0; i < n; i++) all.add(i);
+                return all;
+            }
+            const step = Math.ceil(lastIdx / (TARGET - 1));
+            const indices = new Set();
+            for (let i = 0; i < n; i += step) indices.add(i);
+            indices.add(lastIdx);
+            return indices;
+        }
+
+        if (mode === 'yearly') {
+            // Label every contract whose month is January (matches on raw "Jan YYYY" label,
+            // so it still works when hideYear is on since we pass the unstripped array).
+            const indices = new Set([0, lastIdx]);
+            for (let i = 0; i < n; i++) {
+                if (/^Jan\b/.test(contractLabels[i])) indices.add(i);
+            }
+            return indices;
+        }
+
+        // mode === 'auto' (default): original Math.min(12, lastIdx) logic with last pinned.
+        const numIntervals = Math.min(12, lastIdx);
+        const step = lastIdx / numIntervals;
+        const indices = new Set();
+        for (let i = 0; i <= numIntervals; i++) {
+            indices.add(Math.round(i * step));
+        }
+        indices.add(lastIdx);
+        return indices;
     },
 
     downloadChart: function() {

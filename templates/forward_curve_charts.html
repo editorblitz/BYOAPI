@@ -152,12 +152,25 @@
                     </div>
                 </div>
                 <!-- X-Axis Options -->
-                <div id="xAxisOptionsSection" class="hidden mt-1">
-                    <div class="flex justify-end">
+                <div id="xAxisOptionsSection" class="hidden mt-1 space-y-1">
+                    <div class="flex flex-col items-end gap-1">
                         <label class="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer">
                             <input type="checkbox" id="hideYearCheckbox" class="w-3.5 h-3.5">
                             <span>Hide year on x-axis</span>
                         </label>
+                        <label class="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer">
+                            <input type="checkbox" id="showYearUnderJanCheckbox" class="w-3.5 h-3.5" disabled>
+                            <span>Show year under January</span>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-end gap-2 text-xs text-gray-500">
+                        <span>X-axis interval:</span>
+                        <select id="xAxisLabelMode" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white">
+                            <option value="auto" selected>Auto (default)</option>
+                            <option value="short">Short timeframe</option>
+                            <option value="all">Show every month</option>
+                            <option value="yearly">Yearly (Jan only)</option>
+                        </select>
                     </div>
                 </div>
             </main>

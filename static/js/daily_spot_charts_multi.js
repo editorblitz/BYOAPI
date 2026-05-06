@@ -699,6 +699,7 @@ const DailyPriceCharts = {
                 },
                 axisTick: {
                     alignWithLabel: true,
+                    interval: (index) => labelIndexSet.has(index),
                     lineStyle: {
                         color: '#D3D3D3'
                     }

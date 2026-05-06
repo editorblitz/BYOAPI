@@ -400,9 +400,24 @@ const DailyHighLowCharts = {
         const minPrice = Math.min(...allPrices);
         const maxPrice = Math.max(...allPrices);
 
-        const interval = this.calculateYAxisInterval(minPrice, maxPrice);
+        const yAxisInput = document.getElementById('yAxisInterval');
+        const customInterval = yAxisInput && yAxisInput.value ? parseFloat(yAxisInput.value) : null;
+        const interval = (customInterval && customInterval > 0) ? customInterval : this.calculateYAxisInterval(minPrice, maxPrice);
         const adjustedMinPrice = Math.floor(minPrice / interval) * interval;
         const adjustedMaxPrice = Math.ceil(maxPrice / interval) * interval;
+
+        // Compute which date indices get a label/tick (every ~12th, plus the last)
+        const labelIndexSet = (() => {
+            const lastIndex = dates.length - 1;
+            const numIntervals = 12;
+            const step = lastIndex / numIntervals;
+            const indices = new Set();
+            for (let i = 0; i <= numIntervals; i++) {
+                indices.add(Math.round(i * step));
+            }
+            indices.add(lastIndex);
+            return indices;
+        })();
 
         // Reformat dates to DD-Mon-YYYY
         const reformattedDates = dates.map(dateStr => {
@@ -557,21 +572,7 @@ const DailyHighLowCharts = {
                 data: reformattedDates,
                 axisLabel: {
                     rotate: 45,
-                    interval: (index) => {
-                        const totalDataPoints = dates.length;
-                        const lastIndex = totalDataPoints - 1;
-                        const numIntervals = 12;
-                        const step = lastIndex / numIntervals;
-                        const labelIndices = [];
-                        for (let i = 0; i <= numIntervals; i++) {
-                            labelIndices.push(Math.round(i * step));
-                        }
-                        // Always include the last index to show the latest date
-                        if (!labelIndices.includes(lastIndex)) {
-                            labelIndices.push(lastIndex);
-                        }
-                        return labelIndices.includes(index);
-                    },
+                    interval: (index) => labelIndexSet.has(index),
                     verticalAlign: 'top',
                     align: 'right',
                     fontSize: 13,
@@ -585,6 +586,7 @@ const DailyHighLowCharts = {
                 },
                 axisTick: {
                     alignWithLabel: true,
+                    interval: (index) => labelIndexSet.has(index),
                     lineStyle: {
                         color: '#D3D3D3'
                     }
@@ -592,7 +594,7 @@ const DailyHighLowCharts = {
             },
             yAxis: {
                 type: 'value',
-                name: '$US/MMBtu',
+                name: (document.getElementById('yAxisLabel') && document.getElementById('yAxisLabel').value.trim()) || '$US/MMBtu',
                 nameLocation: 'middle',
                 nameGap: 70,
                 nameTextStyle: {

@@ -315,10 +315,19 @@ const SpotForwardCharts = {
                 if (e.key === 'Enter') this.applyYAxis();
             });
         });
-        document.getElementById('hideYearCheckbox').addEventListener('change', () => {
+        document.getElementById('hideYearCheckbox').addEventListener('change', (e) => {
+            const sub = document.getElementById('showYearUnderJanCheckbox');
+            sub.disabled = !e.target.checked;
+            if (!e.target.checked) sub.checked = false;
+            if (this.spotData && this.forwardData && this.chart) this.rerenderChart();
+        });
+        document.getElementById('showYearUnderJanCheckbox').addEventListener('change', () => {
             if (this.spotData && this.forwardData && this.chart) this.rerenderChart();
         });
         document.getElementById('hideMonthCheckbox').addEventListener('change', () => {
+            if (this.spotData && this.forwardData && this.chart) this.rerenderChart();
+        });
+        document.getElementById('xAxisPadding').addEventListener('input', () => {
             if (this.spotData && this.forwardData && this.chart) this.rerenderChart();
         });
 
@@ -553,6 +562,8 @@ const SpotForwardCharts = {
 
         const hideYear = document.getElementById('hideYearCheckbox').checked;
         const hideMonth = document.getElementById('hideMonthCheckbox').checked;
+        const showYearUnderJanEl = document.getElementById('showYearUnderJanCheckbox');
+        const showYearUnderJan = hideYear && showYearUnderJanEl && showYearUnderJanEl.checked;
         const compact = hideYear || hideMonth; // any simplification = horizontal labels
         const colors = this.getSeriesColors();
         const fwd = this.getFilteredForwardData();
@@ -721,7 +732,7 @@ const SpotForwardCharts = {
                 left: '5.5%',
                 right: '4%',
                 top: gridTop,
-                bottom: compact ? '10%' : '14%',
+                bottom: ((compact ? 10 : 14) + (parseFloat(document.getElementById('xAxisPadding').value) || 0)) + '%',
                 containLabel: true
             },
             xAxis: {
@@ -735,14 +746,16 @@ const SpotForwardCharts = {
                         const d = new Date(value);
                         const mon = months[d.getUTCMonth()];
                         const yr = d.getUTCFullYear();
+                        if (showYearUnderJan && d.getUTCMonth() === 0) return mon + '\n' + yr;
                         if (hideYear) return mon;
                         if (hideMonth) return yr.toString();
                         return mon + '-' + yr;
                     },
-                    verticalAlign: compact ? 'middle' : 'top',
+                    verticalAlign: showYearUnderJan ? 'top' : (compact ? 'middle' : 'top'),
                     align: compact ? 'center' : 'right',
                     margin: compact ? 14 : 8,
                     fontSize: compact ? 14 : 13,
+                    lineHeight: showYearUnderJan ? 18 : undefined,
                     fontWeight: 510,
                     color: 'black'
                 },

@@ -234,9 +234,7 @@ def process_single_price_view(location_code, issue_dates, price_type='fixed'):
     if not curves:
         raise ValueError(f'No forward curve data available for the selected dates. The API may not have published data for {", ".join(issue_dates)} yet.')
 
-    # Sort contracts and filter to reasonable range
     sorted_contracts = sorted(list(all_contracts))
-    sorted_contracts = filter_contracts_by_year(sorted_contracts, max_year=2030)
     formatted_contracts = [format_contract_month(c) for c in sorted_contracts]
 
     # Build series
@@ -315,7 +313,6 @@ def process_multi_price_view(location_codes, issue_date, price_type='fixed'):
         all_contracts.update(location_data.get('Contracts', []))
 
     sorted_contracts = sorted(list(all_contracts))
-    sorted_contracts = filter_contracts_by_year(sorted_contracts, max_year=2030)
     formatted_contracts = [format_contract_month(c) for c in sorted_contracts]
 
     # Build series
@@ -655,6 +652,3 @@ def format_trade_date_label(trade_date):
         return trade_date
 
 
-def filter_contracts_by_year(contracts, max_year=2030):
-    """Filter contracts to only show through specified year."""
-    return [c for c in contracts if c and int(c.split('-')[0]) <= max_year]

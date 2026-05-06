@@ -393,7 +393,9 @@ const MiddayCharts = {
         const minPrice = Math.min(...validPrices);
         const maxPrice = Math.max(...validPrices);
 
-        const interval = this.calculateYAxisInterval(minPrice, maxPrice);
+        const yAxisInput = document.getElementById('yAxisInterval');
+        const customInterval = yAxisInput && yAxisInput.value ? parseFloat(yAxisInput.value) : null;
+        const interval = (customInterval && customInterval > 0) ? customInterval : this.calculateYAxisInterval(minPrice, maxPrice);
         const adjustedMinPrice = Math.floor(minPrice / interval) * interval;
         const adjustedMaxPrice = Math.ceil(maxPrice / interval) * interval;
 
@@ -508,6 +510,7 @@ const MiddayCharts = {
                 },
                 axisTick: {
                     alignWithLabel: true,
+                    interval: (index) => labelIndexSet.has(index),
                     lineStyle: {
                         color: '#D3D3D3'
                     }
@@ -515,7 +518,7 @@ const MiddayCharts = {
             },
             yAxis: {
                 type: 'value',
-                name: '$US/MMBtu',
+                name: (document.getElementById('yAxisLabel') && document.getElementById('yAxisLabel').value.trim()) || '$US/MMBtu',
                 nameLocation: 'middle',
                 nameGap: 70,
                 nameTextStyle: {

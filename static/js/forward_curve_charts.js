@@ -366,6 +366,9 @@ const ForwardCurveCharts = {
         document.getElementById('xAxisLabelMode').addEventListener('change', () => {
             if (this.fullApiResponse && this.chart) this.rerenderChart();
         });
+        document.getElementById('yAxisInterval').addEventListener('input', () => {
+            if (this.fullApiResponse && this.chart) this.rerenderChart();
+        });
     },
 
     addTradeDate: function() {
@@ -701,7 +704,9 @@ const ForwardCurveCharts = {
 
         const minPrice = Math.min(...allPrices);
         const maxPrice = Math.max(...allPrices);
-        const interval = this.calculateYAxisInterval(minPrice, maxPrice);
+        const yAxisInput = document.getElementById('yAxisInterval');
+        const customInterval = yAxisInput && yAxisInput.value ? parseFloat(yAxisInput.value) : null;
+        const interval = (customInterval && customInterval > 0) ? customInterval : this.calculateYAxisInterval(minPrice, maxPrice);
         const adjustedMin = Math.floor(minPrice / interval) * interval;
         const adjustedMax = Math.ceil(maxPrice / interval) * interval;
 
@@ -874,6 +879,7 @@ const ForwardCurveCharts = {
                 },
                 axisTick: {
                     alignWithLabel: true,
+                    interval: (index) => labelIndexSet.has(index),
                     lineStyle: { color: '#D3D3D3' }
                 }
                 };

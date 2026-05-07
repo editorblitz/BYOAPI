@@ -215,6 +215,14 @@ def dashboard():
             'image': 'daily-spot-charts-multi.png'
         },
         {
+            'name': 'Daily Spot Spread Chart',
+            'description': 'Generate a publication-ready chart of the daily price spread between two locations',
+            'url': url_for('quick_charts.daily_spot_spread_chart_page'),
+            'icon': 'chart-bar',
+            'category': 'charts',
+            'image': 'daily-spot-spread-chart.png'
+        },
+        {
             'name': 'Forward Curve - Multi Date Charts',
             'description': 'Generate publication-ready forward curve charts showing price evolution across trade dates',
             'url': url_for('quick_charts.forward_curve_charts_page'),

@@ -46,6 +46,13 @@ def daily_spot_charts_page():
     return render_template('daily_spot_charts.html')
 
 
+@quick_charts_bp.route('/daily-spot-spread-chart')
+@require_api_creds
+def daily_spot_spread_chart_page():
+    """Render the Daily Spot Spread Chart page (single-line spread between two locations)."""
+    return render_template('daily_spot_spread_chart.html')
+
+
 @quick_charts_bp.route('/daily-highlow-charts')
 @require_api_creds
 def daily_highlow_charts_page():
@@ -198,6 +205,49 @@ def api_quick_charts():
             # Return formatted data
             payload = {
                 'series': series_data
+            }
+
+            return jsonify(payload)
+
+        elif chart_type == 'daily-spread':
+            # Daily Spread - difference between two locations on common dates
+            location1 = request.args.get('location1')
+            location2 = request.args.get('location2')
+
+            if not location1 or not location2:
+                return jsonify({'error': 'location1 and location2 parameters are required for daily-spread chart'}), 400
+
+            params1 = {
+                'location': location1,
+                'start_date': start_date.isoformat(),
+                'end_date': end_date.isoformat()
+            }
+            params2 = {
+                'location': location2,
+                'start_date': start_date.isoformat(),
+                'end_date': end_date.isoformat()
+            }
+
+            raw1 = ngi_request('dailyHistoricalData.json', params=params1)
+            raw2 = ngi_request('dailyHistoricalData.json', params=params2)
+
+            records1 = process_daily_data(raw1)
+            records2 = process_daily_data(raw2)
+
+            prices1 = {r['trade_date']: r['average'] for r in records1 if r.get('average') is not None}
+            prices2 = {r['trade_date']: r['average'] for r in records2 if r.get('average') is not None}
+
+            common_dates = sorted(set(prices1.keys()) & set(prices2.keys()))
+            spreads = [prices1[d] - prices2[d] for d in common_dates]
+
+            location1_name = records1[0]['location_name'] if records1 else location1
+            location2_name = records2[0]['location_name'] if records2 else location2
+
+            payload = {
+                'dates': common_dates,
+                'averages': spreads,
+                'location1_name': location1_name,
+                'location2_name': location2_name
             }
 
             return jsonify(payload)

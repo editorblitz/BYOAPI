@@ -74,6 +74,13 @@ def spot_forward_charts_page():
     return render_template('spot_forward_charts.html')
 
 
+@quick_charts_bp.route('/candlestick-chart')
+@require_api_creds
+def candlestick_chart_page():
+    """Render the Candlestick Chart Generator page."""
+    return render_template('candlestick_chart.html')
+
+
 @quick_charts_bp.route('/api/quick-charts')
 @require_api_creds_json
 def api_quick_charts():

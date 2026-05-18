@@ -369,6 +369,12 @@ const ForwardCurveCharts = {
         document.getElementById('yAxisInterval').addEventListener('input', () => {
             if (this.fullApiResponse && this.chart) this.rerenderChart();
         });
+        document.getElementById('legendPadding').addEventListener('input', () => {
+            if (this.fullApiResponse && this.chart) this.rerenderChart();
+        });
+        document.getElementById('bottomPadding').addEventListener('input', () => {
+            if (this.fullApiResponse && this.chart) this.rerenderChart();
+        });
     },
 
     addTradeDate: function() {
@@ -836,13 +842,22 @@ const ForwardCurveCharts = {
                 trigger: 'axis',
                 axisPointer: { type: 'cross' }
             },
-            grid: {
-                left: '7.1%',
-                right: '4%',
-                top: '25%',
-                bottom: document.getElementById('hideYearCheckbox').checked ? '10%' : '14%',
-                containLabel: true
-            },
+            grid: (() => {
+                const padInput = document.getElementById('legendPadding');
+                const padVal = padInput && padInput.value ? parseFloat(padInput.value) : NaN;
+                const topPad = (!isNaN(padVal) && padVal > 0) ? `${padVal}%` : '25%';
+                const botInput = document.getElementById('bottomPadding');
+                const botVal = botInput && botInput.value ? parseFloat(botInput.value) : NaN;
+                const defaultBot = document.getElementById('hideYearCheckbox').checked ? '10%' : '14%';
+                const botPad = (!isNaN(botVal) && botVal > 0) ? `${botVal}%` : defaultBot;
+                return {
+                    left: '7.1%',
+                    right: '4%',
+                    top: topPad,
+                    bottom: botPad,
+                    containLabel: true
+                };
+            })(),
             xAxis: (() => {
                 const labelModeEl = document.getElementById('xAxisLabelMode');
                 const labelMode = labelModeEl ? labelModeEl.value : 'auto';

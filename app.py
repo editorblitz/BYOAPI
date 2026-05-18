@@ -237,6 +237,14 @@ def dashboard():
             'icon': 'chart-line',
             'category': 'charts',
             'image': 'spot-forward-charts.png'
+        },
+        {
+            'name': 'Candlestick Chart',
+            'description': 'Publication-ready candlestick chart of Nymex prompt-month futures overlaid with Henry Hub (and optional Chicago Citygate) daily spot range',
+            'url': url_for('quick_charts.candlestick_chart_page'),
+            'icon': 'chart-bar',
+            'category': 'charts',
+            'image': 'candlestick-chart.png'
         }
     ]
 

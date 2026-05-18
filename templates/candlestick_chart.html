@@ -1,0 +1,646 @@
+{% extends "base.html" %}
+
+{% block title %}Candlestick Chart Generator - NGI Data Tools{% endblock %}
+
+{% block head %}
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' }
+                    }
+                }
+            }
+        };
+    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/daily_prices_pro.css') }}">
+    <style>
+        body {
+            background: #f8fafc;
+            padding-bottom: 2rem;
+        }
+        .main-content {
+            padding: 0;
+            padding-top: calc(52px + 1rem); /* Offset for fixed navbar */
+            max-width: 100%;
+        }
+        .footer { display: none; }
+
+        /* Sidebar panel sections (preserved from candle.html for compact layout) */
+        .panel-section {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px 12px;
+            box-shadow: 0 1px 1px rgba(15, 23, 42, 0.03);
+        }
+        .panel-section + .panel-section { margin-top: 10px; }
+        .section-title {
+            color: #0f172a;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        .section-note {
+            color: #64748b;
+            font-size: 11px;
+            line-height: 1.35;
+            margin: -2px 0 8px;
+        }
+        .panel-section label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #475569;
+            display: block;
+            margin-bottom: 3px;
+        }
+        .panel-section input[type="text"],
+        .panel-section input[type="number"],
+        .panel-section input[type="date"],
+        .panel-section select {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 5px;
+            font-size: 13px;
+            color: #1e293b;
+            background: #f8fafc;
+        }
+        .panel-section input[type="text"]:focus,
+        .panel-section input[type="number"]:focus,
+        .panel-section input[type="date"]:focus,
+        .panel-section select:focus,
+        .panel-section textarea:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+        }
+        .panel-section textarea {
+            min-height: 130px;
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 5px;
+            font-size: 11px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            color: #1e293b;
+            background: #f8fafc;
+            resize: vertical;
+        }
+        .data-details {
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+        .data-details summary {
+            align-items: center;
+            background: #f8fafc;
+            color: #334155;
+            cursor: pointer;
+            display: flex;
+            font-size: 12px;
+            font-weight: 700;
+            justify-content: space-between;
+            list-style: none;
+            padding: 7px 9px;
+        }
+        .data-details summary::-webkit-details-marker { display: none; }
+        .data-details summary::after {
+            content: '+';
+            color: #64748b;
+            font-size: 15px;
+            line-height: 1;
+        }
+        .data-details[open] summary::after { content: '-'; }
+        .data-details-body {
+            border-top: 1px solid #e2e8f0;
+            padding: 9px;
+        }
+        .btn-row { display: flex; gap: 6px; }
+        .btn {
+            flex: 1;
+            padding: 9px 14px;
+            border: none;
+            border-radius: 5px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .btn-primary { background: #2563eb; color: #fff; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-secondary { background: #e2e8f0; color: #1e293b; }
+        .btn-secondary:hover { background: #cbd5e1; }
+        .mini-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin: 6px 0;
+        }
+        .mini-btn {
+            border: 1px solid #cbd5e1;
+            border-radius: 5px;
+            background: #fff;
+            color: #334155;
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 4px 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+        }
+        .mini-btn.primary {
+            background: #eff6ff;
+            border-color: #bfdbfe;
+            color: #2563eb;
+        }
+        .mini-btn:hover { background: #f1f5f9; }
+        .control-grid {
+            display: grid;
+            gap: 8px;
+            grid-template-columns: 1fr 1fr;
+        }
+        .control-stack { display: grid; gap: 7px; }
+        .check-grid {
+            display: grid;
+            gap: 5px 9px;
+            grid-template-columns: 1fr 1fr;
+        }
+        .check-row {
+            align-items: center;
+            color: #475569;
+            cursor: pointer;
+            display: flex !important;
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            gap: 5px;
+            margin: 0 !important;
+        }
+        .inline-number-row {
+            align-items: center;
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+        }
+        .inline-number-row span {
+            color: #64748b;
+            font-size: 11px;
+            width: 28px;
+        }
+        .custom-panel {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 9px;
+        }
+        .custom-panel-title {
+            color: #475569;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .color-grid {
+            display: grid;
+            gap: 6px 10px;
+            grid-template-columns: 1fr 1fr;
+        }
+        .color-row {
+            align-items: center;
+            display: flex;
+            gap: 5px;
+        }
+        .color-row span {
+            color: #475569;
+            font-size: 11px;
+        }
+        .color-pick {
+            width: 30px;
+            height: 22px;
+            padding: 0;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #fff;
+            flex-shrink: 0;
+        }
+        .color-pick:disabled { cursor: not-allowed; opacity: 0.45; }
+        .status {
+            font-size: 11px;
+            color: #64748b;
+            padding: 3px 0;
+            min-height: 18px;
+        }
+        .status.error { color: #dc2626; }
+
+        /* Main canvas area */
+        .preview-shell {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 100%;
+        }
+        .preview-status-row {
+            display: flex;
+            justify-content: center;
+            min-height: 30px;
+        }
+        .canvas-wrap {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+            padding: 10px;
+            display: inline-block;
+            max-width: 100%;
+        }
+        #chart {
+            display: block;
+            height: auto;
+            max-width: 100%;
+            width: 832px;
+        }
+        .annotation-tools {
+            align-items: center;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 7px;
+        }
+        .tool-btn {
+            border: 1px solid #cbd5e1;
+            border-radius: 5px;
+            background: #fff;
+            color: #334155;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 5px 9px;
+        }
+        .tool-btn:disabled { cursor: not-allowed; opacity: 0.45; }
+        .tool-btn.active {
+            background: #2563eb;
+            border-color: #1d4ed8;
+            color: #fff;
+        }
+        .toolbar-note { color: #64748b; font-size: 11px; padding: 0 6px; }
+
+        .floating-status {
+            background: rgba(15, 23, 42, 0.92);
+            border-radius: 999px;
+            color: #f8fafc;
+            font-size: 11px;
+            font-weight: 700;
+            max-width: min(90vw, 640px);
+            opacity: 0;
+            padding: 6px 12px;
+            pointer-events: none;
+            text-align: center;
+            transform: translateY(-6px);
+            transition: opacity 0.18s ease, transform 0.18s ease;
+            white-space: normal;
+        }
+        .floating-status.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .floating-status.error { background: rgba(185, 28, 28, 0.94); }
+
+        .popup-floating {
+            background: #fff;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            box-shadow: 0 12px 32px rgba(15, 23, 42, 0.2);
+            font-size: 12px;
+            max-width: 320px;
+            min-width: 240px;
+            padding: 11px 13px;
+            position: fixed;
+            z-index: 1000;
+        }
+        .popup-message {
+            color: #1e293b;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 9px;
+        }
+        .popup-input {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 5px;
+            color: #1e293b;
+            font-size: 12px;
+            margin-bottom: 9px;
+            padding: 6px 8px;
+            width: 100%;
+        }
+        .popup-input:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+            outline: none;
+        }
+        .popup-actions { display: flex; gap: 6px; justify-content: flex-end; }
+        .popup-btn {
+            background: #fff;
+            border: 1px solid #cbd5e1;
+            border-radius: 5px;
+            color: #334155;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 5px 12px;
+        }
+        .popup-btn:hover { background: #f1f5f9; }
+        .popup-btn.primary {
+            background: #2563eb;
+            border-color: #1d4ed8;
+            color: #fff;
+        }
+        .popup-btn.primary:hover { background: #1d4ed8; }
+        .field { display: flex; flex-direction: column; }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="bg-white text-gray-900 min-h-[70vh]">
+    <div class="py-3">
+        <div class="flex gap-4">
+            <!-- Sidebar -->
+            <aside class="w-[24rem] flex-shrink-0 bg-white border border-gray-300 flex flex-col max-h-[calc(100vh-7rem)] overflow-hidden ml-4">
+                <div class="p-3 flex-1 overflow-y-auto custom-scroll">
+                    <section class="panel-section">
+                        <div class="section-title">Export</div>
+                        <div class="btn-row">
+                            <button class="btn btn-primary" id="downloadBtn">Download WebP</button>
+                        </div>
+                    </section>
+
+                    <section class="panel-section">
+                        <div class="section-title">Data</div>
+                        <p class="section-note">Futures load from the shared Google Sheet. Spot prices load via your NGI API session.</p>
+                        <div class="mini-actions">
+                            <button class="mini-btn primary" type="button" id="reloadFuturesBtn">Reload Sheet</button>
+                            <button class="mini-btn" type="button" id="updateChartBtn">Update Chart</button>
+                            <a class="mini-btn" href="https://docs.google.com/spreadsheets/d/1PMoI0ybhj2BsEv6nsIOyyjCW_rSTVYv44OsOO2PlcbA/edit?gid=0#gid=0" target="_blank" rel="noopener">Edit Sheet</a>
+                        </div>
+                        <div class="status" id="status"></div>
+                        <details class="data-details">
+                            <summary>Futures data</summary>
+                            <div class="data-details-body">
+                                <label>Futures Data (Date, Open, High, Low, Settle)</label>
+                                <textarea id="csvInput"></textarea>
+                                <div class="mini-actions">
+                                    <button class="mini-btn primary" type="button" id="applyFuturesBtn">Apply Futures Data</button>
+                                    <button class="mini-btn" type="button" id="clearFuturesBtn">Clear</button>
+                                </div>
+                            </div>
+                        </details>
+                        <details class="data-details">
+                            <summary>Cash data</summary>
+                            <div class="data-details-body">
+                                <div class="mini-actions">
+                                    <button class="mini-btn primary" type="button" id="loadHenryHubSpotBtn">Load Henry Hub Spot API</button>
+                                </div>
+                                <div class="section-note" id="spotCoverageNote" style="margin:0 0 6px;">Loads up to 10 years of Henry Hub trade-date history, then filters locally when you change the chart range.</div>
+                                <div class="status" id="spotLoadStatus"></div>
+                                <label>Cash Data (Date, Low, High, Average)</label>
+                                <textarea id="cashInput"></textarea>
+                                <div class="mini-actions">
+                                    <button class="mini-btn primary" type="button" id="applyCashBtn">Apply Cash Data</button>
+                                    <button class="mini-btn" type="button" id="clearCashBtn">Clear</button>
+                                </div>
+                            </div>
+                        </details>
+                        <details class="data-details">
+                            <summary>Add Intraday</summary>
+                            <div class="data-details-body">
+                                <div class="field">
+                                    <label>Date</label>
+                                    <input type="date" id="intradayDate">
+                                </div>
+
+                                <div class="custom-panel-title" style="margin-top:8px;">Futures (Open / High / Low / Last)</div>
+                                <div class="control-grid">
+                                    <div class="field"><label>Open</label><input type="number" id="intraFutOpen" step="0.001"></div>
+                                    <div class="field"><label>High</label><input type="number" id="intraFutHigh" step="0.001"></div>
+                                    <div class="field"><label>Low</label><input type="number" id="intraFutLow" step="0.001"></div>
+                                    <div class="field"><label>Last</label><input type="number" id="intraFutLast" step="0.001"></div>
+                                </div>
+                                <div class="mini-actions" style="margin-top:5px;">
+                                    <button class="mini-btn primary" type="button" id="applyIntradayFuturesBtn">Apply Futures</button>
+                                    <button class="mini-btn" type="button" id="clearIntradayFuturesBtn">Clear</button>
+                                </div>
+                                <div class="status" id="intradayFuturesStatus"></div>
+
+                                <div class="custom-panel-title" style="margin-top:9px;">Henry Hub Spot (High / Low / Average)</div>
+                                <div class="control-grid">
+                                    <div class="field"><label>High</label><input type="number" id="intraSpotHigh" step="0.001"></div>
+                                    <div class="field"><label>Low</label><input type="number" id="intraSpotLow" step="0.001"></div>
+                                    <div class="field"><label>Average</label><input type="number" id="intraSpotAvg" step="0.001"></div>
+                                </div>
+                                <div class="mini-actions" style="margin-top:5px;">
+                                    <button class="mini-btn primary" type="button" id="applyIntradayHHBtn">Apply Spot</button>
+                                    <button class="mini-btn" type="button" id="clearIntradayHHBtn">Clear</button>
+                                </div>
+                                <div class="status" id="intradaySpotStatus"></div>
+                            </div>
+                        </details>
+                    </section>
+
+                    <section class="panel-section">
+                        <div class="section-title">Appearance</div>
+                        <div class="control-stack">
+                            <div class="field">
+                                <label>Chart Title</label>
+                                <input type="text" id="chartTitle" value="NGI's Henry Hub Daily Gas Price and NYMEX Prompt Month Futures">
+                            </div>
+                            <div class="control-grid">
+                                <div class="field">
+                                    <label>Color Scheme</label>
+                                    <select id="colorScheme">
+                                        <option value="editorRedGreen" selected>Red / Green</option>
+                                        <option value="ngiBlueEditorRed">Blue / Red</option>
+                                    </select>
+                                </div>
+                                <div class="field">
+                                    <label>Display Range</label>
+                                    <select id="displayRange">
+                                        <option value="30">Last 30 days</option>
+                                        <option value="60" selected>Last 60 days</option>
+                                        <option value="90">Last 90 days</option>
+                                        <option value="180">Last 6 months</option>
+                                        <option value="365">Last 1 year</option>
+                                        <option value="730">Last 2 years</option>
+                                        <option value="1095">Last 3 years</option>
+                                        <option value="1460">Last 4 years</option>
+                                        <option value="1825">Last 5 years</option>
+                                        <option value="0">All data</option>
+                                        <option value="custom">Custom...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="customDateRange" class="custom-panel" style="display:none;">
+                                <div class="custom-panel-title" style="margin-bottom:5px;">Custom Date Range</div>
+                                <div class="control-grid">
+                                    <div class="field"><label>From</label><input type="date" id="dateFrom"></div>
+                                    <div class="field"><label>To</label><input type="date" id="dateTo"></div>
+                                </div>
+                            </div>
+                            <div id="customColors" class="custom-panel" style="display:none;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:7px;">
+                                    <div class="custom-panel-title">Custom Colors</div>
+                                    <button type="button" id="customLoadPreset" class="mini-btn">Load from preset...</button>
+                                </div>
+                                <div class="color-grid">
+                                    <div class="color-row"><input type="color" id="customBullish" value="#2563eb" class="color-pick"><span>Futures Up</span></div>
+                                    <div class="color-row"><input type="color" id="customBearish" value="#93c5fd" class="color-pick"><span>Futures Down</span></div>
+                                    <div class="color-row"><input type="color" id="customBearishStroke" value="#3b82f6" class="color-pick"><span>Down Outline</span></div>
+                                    <div class="color-row"><input type="color" id="customWick" value="#2563eb" class="color-pick" disabled><span>Wicks</span></div>
+                                    <div class="color-row"><input type="color" id="customSpotLine" value="#0891b2" class="color-pick"><span>Spot Line</span></div>
+                                    <div class="color-row"><input type="color" id="customSpotArea" value="#0891b2" class="color-pick"><span>Spot Area</span></div>
+                                </div>
+                                <label class="check-row" style="margin-top:7px !important;">
+                                    <input type="checkbox" id="customMatchWick" checked> Match wicks to body color
+                                </label>
+                            </div>
+                            <div class="field">
+                                <label>Source Text</label>
+                                <input type="text" id="sourceText" value="Source: NGI's Daily Gas Price Index, CME">
+                            </div>
+                            <div class="field">
+                                <label class="check-row" style="margin-bottom:5px;">
+                                    <input type="checkbox" id="showNote"> Add Note
+                                </label>
+                                <input type="text" id="noteText" placeholder="Note: enter footnote text" value="Note: " style="display:none;">
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="panel-section">
+                        <div class="section-title">Series</div>
+                        <div class="check-grid">
+                            <label class="check-row"><input type="checkbox" id="showFutures" checked> Show Futures</label>
+                            <label class="check-row"><input type="checkbox" id="showSpot" checked> Show Spot</label>
+                            <label class="check-row"><input type="checkbox" id="showChicagoCitygate"> Show Chicago Citygate</label>
+                        </div>
+                        <div class="field" style="margin-top:9px;">
+                            <label>Spot Range Fill</label>
+                            <select id="spotOpacity">
+                                <option value="0.18" selected>Light</option>
+                                <option value="0.30">Medium</option>
+                                <option value="0.45">Bold</option>
+                                <option value="0.65">Heavy</option>
+                            </select>
+                        </div>
+                        <div class="section-note" style="margin:10px 0 6px;">Moving averages</div>
+                        <div class="check-grid">
+                            <label class="check-row"><input type="checkbox" value="20" class="ma-check"><span style="color:#1d4ed8;">&#9644;</span> 20d MA</label>
+                            <label class="check-row"><input type="checkbox" value="50" class="ma-check"><span style="color:#0891b2;">&#9644;</span> 50d MA</label>
+                            <label class="check-row"><input type="checkbox" value="100" class="ma-check"><span style="color:#6366f1;">&#9644;</span> 100d MA</label>
+                            <label class="check-row"><input type="checkbox" value="200" class="ma-check"><span style="color:#003A50;">&#9644;</span> 200d MA</label>
+                        </div>
+                    </section>
+
+                    <section class="panel-section">
+                        <div class="section-title">Axis</div>
+                        <div class="control-grid">
+                            <div>
+                                <label>Y-Axis Range</label>
+                                <label class="check-row"><input type="radio" name="yaxis" value="auto" checked> Auto</label>
+                                <label class="check-row"><input type="radio" name="yaxis" value="manual"> Manual</label>
+                                <div id="yaxisManual" style="display:none;">
+                                    <div class="inline-number-row"><span>Min</span><input type="number" id="yMin" step="0.5"></div>
+                                    <div class="inline-number-row"><span>Max</span><input type="number" id="yMax" step="0.5"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <label>Y-Axis Interval</label>
+                                <label class="check-row"><input type="radio" name="yinterval" value="auto" checked> Auto</label>
+                                <label class="check-row"><input type="radio" name="yinterval" value="manual"> Manual</label>
+                                <div id="yintervalManual" style="display:none;">
+                                    <div class="inline-number-row"><span>Step</span><input type="number" id="yInterval" step="0.1" min="0.1"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="panel-section">
+                        <div class="section-title">Annotations</div>
+                        <p class="section-note">Price levels render on the chart. Toggle the drawing tools below the chart to add lines, arrows, and labels.</p>
+                        <div class="mini-actions">
+                            <button class="mini-btn" id="toggleAnnotationToolsBtn" type="button">Show drawing tools</button>
+                        </div>
+                        <div id="priceLevels"></div>
+                        <div class="mini-actions">
+                            <button class="mini-btn primary" type="button" id="addPriceLevelBtn">+ Add Price Level</button>
+                        </div>
+                        <div class="check-grid">
+                            <label class="check-row"><input type="checkbox" id="levelOffset"> Offset from MAs</label>
+                            <label class="check-row"><input type="checkbox" id="levelFullLine"> Show full line</label>
+                        </div>
+                    </section>
+                </div>
+            </aside>
+
+            <!-- Main Chart Area -->
+            <main class="flex-1 mr-4">
+                <div class="preview-shell">
+                    <div class="preview-status-row">
+                        <div class="floating-status" id="floatingStatus" aria-live="polite"></div>
+                    </div>
+                    <div class="canvas-wrap">
+                        <canvas id="chart" width="1664" height="898"></canvas>
+                    </div>
+                    <div class="annotation-tools" id="annotationToolbar" aria-label="Drawing tools" style="display:none;">
+                        <button class="tool-btn" type="button" id="drawLineBtn">Draw line</button>
+                        <button class="tool-btn" type="button" id="drawArrowBtn">Draw arrow</button>
+                        <button class="tool-btn" type="button" id="addLabelBtn">Add label</button>
+                        <input type="color" id="annotationColor" value="#003A50" class="color-pick" title="Annotation color">
+                        <button class="tool-btn" type="button" id="undoAnnotationBtn">Undo</button>
+                        <button class="tool-btn" type="button" id="clearAnnotationsBtn">Clear all</button>
+                        <span class="toolbar-note" id="annotationHint">Click a tool, then click on the chart</span>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+</div>
+
+<div id="popupModal" class="popup-floating" style="display:none;" role="dialog">
+    <div class="popup-message" id="popupMessage"></div>
+    <input type="text" id="popupInput" class="popup-input" style="display:none;">
+    <div class="popup-actions">
+        <button id="popupCancel" class="popup-btn" type="button">Cancel</button>
+        <button id="popupConfirm" class="popup-btn primary" type="button">OK</button>
+    </div>
+</div>
+
+<div class="daily-prices-log fixed bottom-0 left-0 right-0 z-40">
+    <div id="logDrawer" class="bg-gray-900 border-t border-gray-700 transition-all duration-300 ease-in-out h-0 overflow-hidden">
+        <div id="logContent" class="h-64 p-4 font-mono text-xs overflow-y-auto custom-scroll text-gray-300"></div>
+    </div>
+    <button id="logToggle" class="w-full bg-gray-800 border-t border-gray-700 h-8 flex items-center justify-between px-4 text-xs font-medium text-gray-300 hover:text-white hover:bg-gray-700">
+        <div class="flex items-center gap-3">
+            <div id="statusDot" class="w-2 h-2 bg-green-500"></div>
+            <span id="statusLabel" class="uppercase tracking-wider font-semibold">Ready</span>
+            <span class="w-px h-3 bg-gray-600 mx-1"></span>
+            <span id="lastLogMsg" class="font-mono truncate max-w-md text-gray-400">System ready</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <svg id="logArrow" class="transition-transform duration-300" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
+        </div>
+    </button>
+</div>
+
+<script src="{{ url_for('static', filename='js/candlestick_chart.js') }}"></script>
+{% endblock %}

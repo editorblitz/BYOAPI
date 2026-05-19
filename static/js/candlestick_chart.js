@@ -988,7 +988,7 @@ function generateChart() {
     }
   }
 
-  const MA_COLORS = { 20: '#1d4ed8', 50: '#0891b2', 100: '#6366f1', 200: '#003A50' };
+  const MA_COLORS = { 20: '#9333ea', 50: '#ec4899', 100: '#475569', 200: '#003A50' };
   const selectedMAs = Array.from(document.querySelectorAll('.ma-check:checked')).map(cb => parseInt(cb.value));
   const visibleStartIdx = data.length - visibleData.length;
 
@@ -1113,8 +1113,6 @@ function generateChart() {
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(pad.left, pad.top + chartH);
-  ctx.lineTo(W - pad.right, pad.top + chartH);
-  ctx.moveTo(W - pad.right, pad.top);
   ctx.lineTo(W - pad.right, pad.top + chartH);
   ctx.stroke();
 

@@ -98,6 +98,16 @@ BYO dashboard/
 pipenv run python app.py
 ```
 
+**LET ME PUT IT TWICE SINCE THIS IS SO IMPORTANT:**
+
+**Start the Flask development server**:
+```bash
+pipenv run python app.py
+```
+
+
+
+
 The application will be available at http://localhost:5000
 
 ### Alternative: Using pipenv shell

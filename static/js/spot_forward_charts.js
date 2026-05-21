@@ -305,6 +305,10 @@ const SpotForwardCharts = {
                 if (e.key === 'Enter') this.applyNoteSource();
             });
         });
+        document.getElementById('applyYAxisLabelBtn').addEventListener('click', () => this.applyYAxisLabel());
+        document.getElementById('yAxisLabelInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') this.applyYAxisLabel();
+        });
         document.getElementById('exportColorsBtn').addEventListener('click', () => this.exportColors());
         document.getElementById('importColorsBtn').addEventListener('click', () => document.getElementById('importColorsFile').click());
         document.getElementById('importColorsFile').addEventListener('change', (e) => this.importColors(e));
@@ -568,6 +572,7 @@ const SpotForwardCharts = {
         const colors = this.getSeriesColors();
         const fwd = this.getFilteredForwardData();
         const spot = this.spotData;
+        const yAxisLabel = (document.getElementById('yAxisLabelInput').value || '').trim() || '$US/MMBtu';
 
         const titleText = this.getTitleText();
         const isTwoLine = titleText.includes('\n');
@@ -702,7 +707,7 @@ const SpotForwardCharts = {
                     top: 'middle',
                     rotation: Math.PI / 2,
                     style: {
-                        text: '$US/MMBtu',
+                        text: yAxisLabel,
                         font: 'bold 12px Arial',
                         fill: '#000'
                     }
@@ -899,6 +904,11 @@ const SpotForwardCharts = {
         this.customSource = document.getElementById('sourceInput').value.trim();
         this.rerenderChart();
         this.log('Note/Source updated.');
+    },
+
+    applyYAxisLabel: function() {
+        this.rerenderChart();
+        this.log('Y-axis label updated.');
     },
 
     applyYAxis: function() {

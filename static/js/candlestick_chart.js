@@ -724,8 +724,9 @@ function generateChart() {
   const H = canvas.height / DPR;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-  const marginLeft = 10;
+  const marginLeft = 16;
   const marginRight = 15;
+  const logoInset = 6;  // keep the NGI logo's right edge inside the underline's right end
   const hasMA = document.querySelectorAll('.ma-check:checked').length > 0;
   const priceLevels = getPriceLevels();
   const hasLevels = priceLevels.length > 0;
@@ -736,7 +737,7 @@ function generateChart() {
   else if (hasMA) rightPad = 70;
   const showSpot = document.getElementById('showSpot').checked && visibleSpotSeries.length > 0;
   const showFutures = document.getElementById('showFutures').checked;
-  const pad = { top: showSpot ? 88 : 72, right: rightPad, bottom: note ? 113 : 95, left: 78 };
+  const pad = { top: showSpot ? 88 : 72, right: rightPad, bottom: note ? 130 : 112, left: 96 };
   const chartW = W - pad.left - pad.right;
   const chartH = H - pad.top - pad.bottom;
 
@@ -746,7 +747,7 @@ function generateChart() {
   if (logoImg) {
     const logoH = 32;
     const logoW = logoImg.width * (logoH / logoImg.height);
-    ctx.drawImage(logoImg, W - marginRight - logoW, 8, logoW, logoH);
+    ctx.drawImage(logoImg, W - marginRight - logoInset - logoW, 8, logoW, logoH);
   }
 
   ctx.fillStyle = COLOR_TITLE;
@@ -1175,9 +1176,22 @@ function generateChart() {
 }
 
 // ── WebP Download ───────────────────────────────────────────────────
+// Export at the editor's spec: 5.75 in wide @ 144 ppi = 828 px, 16:9 (828 x 466).
+// The on-screen canvas renders at 2x (1656 x 932) for a crisp retina preview, so
+// downscale it into an offscreen 828 x 466 canvas before encoding the WebP.
+const EXPORT_WIDTH = 828;
+const EXPORT_HEIGHT = 466;
+
 function downloadWebP() {
   const canvas = document.getElementById('chart');
-  canvas.toBlob(function(blob) {
+  const out = document.createElement('canvas');
+  out.width = EXPORT_WIDTH;
+  out.height = EXPORT_HEIGHT;
+  const octx = out.getContext('2d');
+  octx.imageSmoothingEnabled = true;
+  octx.imageSmoothingQuality = 'high';
+  octx.drawImage(canvas, 0, 0, EXPORT_WIDTH, EXPORT_HEIGHT);
+  out.toBlob(function(blob) {
     if (!blob) {
       setStatus('WebP export failed — your browser may not support it.', true);
       return;
@@ -1264,8 +1278,11 @@ let _chartGeom = null;
 function getCanvasLogicalPos(evt) {
   const canvas = document.getElementById('chart');
   const rect = canvas.getBoundingClientRect();
-  const scaleX = rect.width > 0 ? 832 / rect.width : 1;
-  const scaleY = rect.height > 0 ? 449 / rect.height : 1;
+  // Logical drawing size is the backing store divided by the render DPR (2).
+  const logicalW = canvas.width / 2;
+  const logicalH = canvas.height / 2;
+  const scaleX = rect.width > 0 ? logicalW / rect.width : 1;
+  const scaleY = rect.height > 0 ? logicalH / rect.height : 1;
   return { x: (evt.clientX - rect.left) * scaleX, y: (evt.clientY - rect.top) * scaleY };
 }
 

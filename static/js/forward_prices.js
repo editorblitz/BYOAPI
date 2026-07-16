@@ -23,7 +23,8 @@ const App = {
         contractDateRange: {start: '', end: ''},
         contractLocations: [],
 
-        // Location Database
+        // Location Database (fallback — replaced at init with the full list
+        // fetched from /api/forward-locations, which mirrors the NGI forward datafeed)
         locations: {
             'Favorites': [
                 { name: 'Henry Hub', value: 'SLAHH' },
@@ -38,36 +39,138 @@ const App = {
             ],
             'South Texas': [
                 { name: 'Agua Dulce', value: 'STXAGUAD' },
+                { name: 'Florida Gas Zone 1', value: 'STXFGTZ1' },
+                { name: 'NGPL S. TX', value: 'STXNGPL' },
+                { name: 'Tennessee Zone 0 South', value: 'STXTENN' },
                 { name: 'Texas Eastern S. TX', value: 'STXTETCO' },
-                { name: 'Transco Zone 1', value: 'STXST30' }
+                { name: 'Transco Zone 1', value: 'STXST30' },
+                { name: 'Tres Palacios', value: 'STX3PAL' }
             ],
             'East Texas': [
+                { name: 'Carthage', value: 'ETXCARTH' },
                 { name: 'Houston Ship Channel', value: 'ETXHSHIP' },
                 { name: 'Katy', value: 'ETXKATY' },
+                { name: 'NGPL TexOk', value: 'ETXNGPL' },
+                { name: 'Tennessee Zone 0 North', value: 'ETXTENN' },
+                { name: 'Texas Eastern E. TX', value: 'ETXTETCO' },
                 { name: 'Transco Zone 2', value: 'ETXST45' }
             ],
             'West Texas': [
                 { name: 'El Paso Permian', value: 'WTXEPP' },
+                { name: 'Transwestern', value: 'WTXTW' },
                 { name: 'Waha', value: 'WTXWAHA' }
             ],
-            'Midwest': [
+            'Midwest / Midcontinent': [
+                { name: 'Alliance', value: 'MCWALL' },
+                { name: 'ANR ML7', value: 'MCWML7' },
+                { name: 'ANR SW', value: 'MCWANR' },
                 { name: 'Chicago Citygate', value: 'MCWCCITY' },
-                { name: 'Dawn', value: 'MCWDAWN' }
+                { name: 'Consumers Energy', value: 'MCWCONS' },
+                { name: 'Dawn', value: 'MCWDAWN' },
+                { name: 'Enable East', value: 'MCWNORE' },
+                { name: 'Michigan Consolidated', value: 'MCWMCON' },
+                { name: 'NGPL Midcontinent', value: 'MCWNGPL' },
+                { name: 'Northern Natural Demarc', value: 'MCWDMARK' },
+                { name: 'OGT', value: 'MCWONG' },
+                { name: 'Panhandle Eastern', value: 'MCWPEPL' },
+                { name: 'Southern Star', value: 'MCWWILL' }
+            ],
+            'North Louisiana': [
+                { name: 'Enable South', value: 'NLACPTS' },
+                { name: 'Perryville', value: 'NLAPERRY' },
+                { name: 'Texas Gas Zone 1', value: 'ETXTGT' }
             ],
             'South Louisiana': [
+                { name: 'ANR SE', value: 'SLAANRSE' },
+                { name: 'Columbia Gulf Mainline', value: 'SLACGMAIN' },
+                { name: 'Florida Gas Zone 2', value: 'SLAFGTZ2' },
                 { name: 'Henry Hub', value: 'SLAHH' },
-                { name: 'Southern Natural', value: 'SLASONAT' }
+                { name: 'Southern Natural', value: 'SLASONAT' },
+                { name: 'Tennessee Line 500', value: 'SLAT500' },
+                { name: 'Texas Eastern E. LA', value: 'SLATETCOE' },
+                { name: 'Transco Zone 3', value: 'SLATRANZ3' }
+            ],
+            'Southeast': [
+                { name: 'Cove Point', value: 'NEACOVE' },
+                { name: 'FGT Citygate', value: 'FLAFGT' },
+                { name: 'Florida Gas Zone 3', value: 'SLAFGTZ3' },
+                { name: 'Transco Zone 4', value: 'ALAST85' },
+                { name: 'Transco Zone 5', value: 'NEATRANZ5' }
+            ],
+            'Northeast / Appalachia': [
+                { name: 'Algonquin Citygate', value: 'NEAALGCG' },
+                { name: 'Algonquin Receipts', value: 'NEAALGIN' },
+                { name: 'Columbia Gas', value: 'NEATCO' },
+                { name: 'Dracut', value: 'NEADRACUT' },
+                { name: 'Eastern Gas South', value: 'NEACNG' },
+                { name: 'Iroquois Zone 2', value: 'NEAIRO' },
+                { name: 'Niagara', value: 'MCWNIAGR' },
+                { name: 'Tennessee Zn 4 Marcellus', value: 'NEATENN4MAR' },
+                { name: 'Texas Eastern M-2, 30 Receipt', value: 'NEATETM2REC' },
+                { name: 'Texas Eastern M-3, Delivery', value: 'NEATETM3DEL' },
+                { name: 'Transco-Leidy Line', value: 'NEALEIDYT' },
+                { name: 'Transco Zone 6 NY', value: 'NEATZ6NY' }
+            ],
+            'Rocky Mountains': [
+                { name: 'Cheyenne Hub', value: 'RMTCHEY' },
+                { name: 'CIG', value: 'RMTCIG' },
+                { name: 'Northwest Sumas', value: 'RMTSUMAS' },
+                { name: 'Opal', value: 'RMTOPAL' },
+                { name: 'White River Hub', value: 'RMTWHITERVR' }
+            ],
+            'Arizona/Nevada': [
+                { name: 'El Paso S. Mainline/N. Baja', value: 'ARNBAJAN' },
+                { name: 'KRGT Del Pool', value: 'ARNKERNDEL' }
             ],
             'California': [
+                { name: 'Malin', value: 'CALM400' },
                 { name: 'PG&E Citygate', value: 'CALPGCG' },
-                { name: 'SoCal Citygate', value: 'CALSCG' }
+                { name: 'SoCal Citygate', value: 'CALSCG' },
+                { name: 'SoCal Border Avg.', value: 'CALSAVG' }
             ],
-            'Northeast': [
-                { name: 'Algonquin Citygate', value: 'NEAALGCG' },
-                { name: 'Transco Zone 6 NY', value: 'NEATZ6NY' }
+            'Canada': [
+                { name: 'Alliance (APC) - ATP', value: 'CDNCREC' },
+                { name: 'Empress', value: 'CDNEMP' },
+                { name: 'NOVA/AECO C', value: 'CDNNOVA' },
+                { name: 'Westcoast Station 2', value: 'CDNWST2' }
             ]
         }
     },
+
+    // Region grouping for locations fetched from the API, based on NGI
+    // point-code prefixes. First matching prefix wins, so more specific
+    // prefixes are listed first; unmatched codes go to 'Other'.
+    REGION_PREFIXES: [
+        ['STX', 'South Texas'],
+        ['ETXTGT', 'North Louisiana'],
+        ['ETX', 'East Texas'],
+        ['WTX', 'West Texas'],
+        ['MCWNIAGR', 'Northeast / Appalachia'],
+        ['MCW', 'Midwest / Midcontinent'],
+        ['MWE', 'Midwest / Midcontinent'],
+        ['MCT', 'Midwest / Midcontinent'],
+        ['NLA', 'North Louisiana'],
+        ['SLAFGTZ3', 'Southeast'],
+        ['SLA', 'South Louisiana'],
+        ['NEACOVE', 'Southeast'],
+        ['NEATRANZ5', 'Southeast'],
+        ['NEATZ5', 'Southeast'],
+        ['NEA', 'Northeast / Appalachia'],
+        ['ALA', 'Southeast'],
+        ['FLA', 'Southeast'],
+        ['SE', 'Southeast'],
+        ['RMT', 'Rocky Mountains'],
+        ['ARN', 'Arizona/Nevada'],
+        ['CAL', 'California'],
+        ['CDN', 'Canada']
+    ],
+
+    REGION_ORDER: [
+        'Favorites', 'South Texas', 'East Texas', 'West Texas',
+        'Midwest / Midcontinent', 'North Louisiana', 'South Louisiana',
+        'Southeast', 'Northeast / Appalachia', 'Rocky Mountains',
+        'Arizona/Nevada', 'California', 'Canada', 'Other'
+    ],
 
     // --- INITIALIZATION ---
     init: async function() {
@@ -94,9 +197,17 @@ const App = {
 
     fetchLatestDateAndSetupDates: async function() {
         try {
-            this.log('Fetching latest available issue date from API...');
-            const res = await fetch('/api/forward-latest-date');
+            this.log('Fetching available forward locations and latest issue date from API...');
+            const res = await fetch('/api/forward-locations');
             const data = await res.json();
+
+            if (data.success && Array.isArray(data.locations) && data.locations.length > 0) {
+                this.buildLocationDb(data.locations);
+                this.setupLocations();
+                this.log(`Loaded ${data.locations.length} forward locations from API.`);
+            } else {
+                this.log('Could not fetch forward locations, using built-in defaults');
+            }
 
             if (data.success && data.latest_issue_date) {
                 this.log(`Latest available issue date: ${data.latest_issue_date}`);
@@ -106,9 +217,41 @@ const App = {
                 this.setupDates(null);
             }
         } catch (err) {
-            this.log(`Error fetching latest issue date: ${err.message}. Using fallback defaults.`);
+            this.log(`Error fetching forward locations: ${err.message}. Using fallback defaults.`);
             this.setupDates(null);
         }
+    },
+
+    regionForCode: function(code) {
+        const match = this.REGION_PREFIXES.find(([prefix]) => code.startsWith(prefix));
+        return match ? match[1] : 'Other';
+    },
+
+    buildLocationDb: function(apiLocations) {
+        const groups = {};
+        apiLocations.forEach(loc => {
+            if (!loc || !loc.code) return;
+            const region = this.regionForCode(loc.code);
+            (groups[region] = groups[region] || []).push({ name: loc.name || loc.code, value: loc.code });
+        });
+
+        Object.values(groups).forEach(locs => locs.sort((a, b) => a.name.localeCompare(b.name)));
+
+        // Keep the curated Favorites group, but only locations the API actually has
+        const available = new Set(apiLocations.map(l => l.code));
+        const favorites = this.state.locations['Favorites'].filter(l => available.has(l.value));
+
+        const db = {};
+        if (favorites.length > 0) db['Favorites'] = favorites;
+        this.REGION_ORDER.forEach(region => {
+            if (groups[region]) db[region] = groups[region];
+        });
+        // Any regions not covered by REGION_ORDER
+        Object.keys(groups).forEach(region => {
+            if (!db[region]) db[region] = groups[region];
+        });
+
+        this.state.locations = db;
     },
 
     formatLocalDate: function(d) {

@@ -74,6 +74,13 @@ def spot_forward_charts_page():
     return render_template('spot_forward_charts.html')
 
 
+@quick_charts_bp.route('/forward-charts-multi')
+@require_api_creds
+def forward_charts_multi_page():
+    """Render the Forward Curves - Multi Location page."""
+    return render_template('forward_charts_multi.html')
+
+
 @quick_charts_bp.route('/candlestick-chart')
 @require_api_creds
 def candlestick_chart_page():

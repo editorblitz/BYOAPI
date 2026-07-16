@@ -3,7 +3,7 @@ Forward Prices data routes.
 Provides API endpoints and page for forward price curve visualization.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Blueprint, render_template, request, jsonify
 from auth import require_api_creds, require_api_creds_json, ngi_request
 
@@ -81,10 +81,35 @@ def api_forward_prices():
 @forward_prices_bp.route('/api/forward-locations')
 @require_api_creds_json
 def api_forward_locations():
-    """Fetch available forward locations from NGI API."""
+    """Return all locations available in the latest forward curve datafeed.
+
+    Derives the list from forwardDatafeed.json (same source as /forward-table),
+    so it always matches exactly the locations that have forward data.
+    Also returns the latest issue date so the frontend can initialize
+    locations and dates from a single request.
+    """
     try:
-        data = ngi_request('forwardLocations')
-        return jsonify({'success': True, 'data': data})
+        data = fetch_forward_curve(None)
+
+        locations = [
+            {'code': code, 'name': loc_data.get('Location', code)}
+            for code, loc_data in (data.get('data') or {}).items()
+        ]
+        locations.sort(key=lambda loc: loc['name'])
+
+        trade_date = data.get('meta', {}).get('trade_date')
+        issue_date = data.get('meta', {}).get('issue_date')
+        if not issue_date and trade_date:
+            # Issue date is the day after trade date
+            trade_date_obj = datetime.strptime(trade_date, '%Y-%m-%d')
+            issue_date = (trade_date_obj + timedelta(days=1)).strftime('%Y-%m-%d')
+
+        return jsonify({
+            'success': True,
+            'locations': locations,
+            'trade_date': trade_date,
+            'latest_issue_date': issue_date
+        })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

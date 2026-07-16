@@ -239,6 +239,14 @@ def dashboard():
             'image': 'spot-forward-charts.png'
         },
         {
+            'name': 'Forward Curves - Multi Location',
+            'description': 'Compare forward curves for multiple locations on a single trade date with publication-ready styling',
+            'url': url_for('quick_charts.forward_charts_multi_page'),
+            'icon': 'chart-line',
+            'category': 'charts',
+            'image': 'forward-charts-multi.png'
+        },
+        {
             'name': 'Candlestick Chart',
             'description': 'Publication-ready candlestick chart of Nymex prompt-month futures overlaid with Henry Hub (and optional Chicago Citygate) daily spot range',
             'url': url_for('quick_charts.candlestick_chart_page'),

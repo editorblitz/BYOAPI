@@ -1,0 +1,380 @@
+{% extends "base.html" %}
+
+{% block title %}Custom Data Chart - NGI Data Tools{% endblock %}
+
+{% block head %}
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' }
+                    }
+                }
+            }
+        };
+    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/daily_prices_pro.css') }}">
+    <style>
+        body {
+            background: #f8fafc;
+            padding-bottom: 2rem;
+        }
+        .main-content {
+            padding: 0;
+            padding-top: calc(52px + 1.5rem); /* Offset for fixed navbar */
+            max-width: 100%;
+        }
+        .footer {
+            display: none;
+        }
+        #chart {
+            width: 750px;
+            height: 400px;
+            margin: 0 auto;
+        }
+        .color-picker {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            min-width: 20px;
+            border: 1px solid #d1d5db;
+            border-radius: 2px;
+            padding: 1px;
+            cursor: pointer;
+            background: none;
+        }
+        .color-picker::-webkit-color-swatch-wrapper { padding: 0; }
+        .color-picker::-webkit-color-swatch { border: none; border-radius: 1px; }
+        .color-picker::-moz-color-swatch { border: none; border-radius: 1px; }
+
+        /* Collapsible control groups under the chart.
+           Headers use the NGI navy (#003A50) on a faint blue-gray tint so they
+           stand apart from the white control areas. */
+        .control-group summary {
+            list-style: none;
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            padding: 9px 12px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #003A50;
+            border-left: 3px solid transparent;
+            user-select: none;
+            transition: background 0.1s ease;
+        }
+        .control-group summary::-webkit-details-marker { display: none; }
+        .control-group summary::before {
+            content: '\25B8'; /* ▸ */
+            color: #003A50;
+            font-size: 16px;
+            line-height: 1;
+            transition: transform 0.15s ease;
+            align-self: center;
+        }
+        .control-group[open] summary::before { transform: rotate(90deg); }
+        .control-group summary:hover { background: #f9fafb; }
+        .control-group[open] summary {
+            border-left-color: #003A50;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .summary-hint {
+            font-weight: 400;
+            text-transform: none;
+            letter-spacing: 0;
+            color: #64748b;
+        }
+        .field-label {
+            font-weight: 600;
+            color: #374151;
+        }
+        .btn-apply {
+            padding: 2px 10px;
+            background: #e5e7eb;
+            color: #4b5563;
+            border: 1px solid #d1d5db;
+            font-size: 11px;
+            cursor: pointer;
+            width: fit-content;
+        }
+        .btn-apply:hover { background: #d1d5db; }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="daily-prices-pro-container bg-white text-gray-900 min-h-[70vh]">
+    <div class="py-4">
+        <div class="flex gap-4">
+            <!-- Sidebar -->
+            <aside class="w-80 flex-shrink-0 bg-white border border-gray-300 flex flex-col max-h-[calc(100vh-10rem)] overflow-hidden ml-4">
+                <div class="p-4 flex-1 overflow-y-auto custom-scroll space-y-4">
+                    <div>
+                        <button id="openEditorBtn" class="w-full bg-gray-900 text-white px-4 py-2 text-sm font-semibold hover:bg-gray-800 transition-colors mb-1">
+                            Input/Edit Data
+                        </button>
+                        <div class="flex gap-2">
+                            <button id="uploadCsvBtn" class="flex-1 px-2 py-1 bg-gray-200 text-gray-900 text-xs font-semibold hover:bg-gray-300 border border-gray-300">Upload CSV...</button>
+                            <button id="loadPreviousBtn" title="Load the dataset saved in this browser from your last Generate" class="flex-1 px-2 py-1 bg-gray-200 text-gray-900 text-xs font-semibold hover:bg-gray-300 border border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed">Load Previous</button>
+                            <button id="clearDataBtn" class="px-2 py-1 bg-gray-200 text-gray-600 text-xs hover:bg-gray-300 border border-gray-300">Clear</button>
+                        </div>
+                        <input type="file" id="csvFileInput" accept=".csv,.tsv,.txt" class="hidden">
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer">
+                            <input type="checkbox" id="firstRowHeaders" class="w-3.5 h-3.5">
+                            <span>First row is series names</span>
+                        </label>
+                        <label id="sortByDateWrap" class="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer hidden">
+                            <input type="checkbox" id="sortByDate" class="w-3.5 h-3.5" checked>
+                            <span>Sort rows by date</span>
+                        </label>
+                    </div>
+
+                    <div id="ngiMetricWrap" class="hidden">
+                        <label class="block text-xs font-semibold text-gray-700 uppercase mb-1">NGI Export Value</label>
+                        <select id="ngiMetricSelect" class="w-full px-2 py-1 border border-gray-300 text-sm bg-white"></select>
+                        <p class="text-[11px] text-gray-400 mt-1">This CSV is an NGI website export — pick which value column to chart.</p>
+                    </div>
+
+                    <div id="previewSection" class="hidden">
+                        <label class="block text-xs font-semibold text-gray-700 uppercase mb-1">Data Check</label>
+                        <div id="previewSummary" class="text-xs mb-1"></div>
+                        <div id="previewWarnings" class="text-[11px] text-amber-600 mt-1 space-y-0.5"></div>
+                    </div>
+
+                    <hr class="border-gray-200">
+
+                    <button id="generateBtn" class="w-full bg-gray-900 text-white px-4 py-2 text-sm font-semibold hover:bg-gray-800 transition-colors">
+                        Generate Chart
+                    </button>
+
+                    <div id="seriesListSection" class="hidden bg-gray-50 border border-gray-200 p-3">
+                        <label class="block text-xs font-semibold text-gray-700 uppercase mb-2">Series</label>
+                        <div id="seriesListContainer" class="space-y-2"></div>
+                    </div>
+                </div>
+
+                <!-- Download button at bottom -->
+                <div class="p-4 border-t border-gray-200 space-y-2">
+                    <button id="downloadBtn" class="w-full bg-green-600 text-white px-4 py-2 text-sm font-semibold hover:bg-green-700 transition-colors hidden">
+                        Download WebP
+                    </button>
+                    <div class="flex gap-2 pt-1">
+                        <button id="exportColorsBtn" class="flex-1 text-xs text-gray-400 hover:text-gray-600 transition-colors">Export Colors</button>
+                        <span class="text-gray-300 text-xs">|</span>
+                        <button id="importColorsBtn" class="flex-1 text-xs text-gray-400 hover:text-gray-600 transition-colors">Import Colors</button>
+                        <input type="file" id="importColorsFile" accept=".json" class="hidden">
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Chart Area -->
+            <main class="flex-1 mr-4">
+                <div class="bg-white border border-gray-300 p-4">
+                    <div id="chart"></div>
+                </div>
+                <!-- Chart editing controls (below chart), grouped in collapsible sections -->
+                <div id="chartControlsSection" class="hidden mt-3">
+                    <div class="w-[782px] max-w-full mx-auto border border-gray-300 bg-white divide-y divide-gray-200 text-xs text-gray-600">
+
+                        <!-- ═══ Titles & Text ═══ -->
+                        <details class="control-group" open>
+                            <summary>Titles &amp; Text<span class="summary-hint">chart title, note, source</span></summary>
+                            <div class="p-3 grid grid-cols-2 gap-6">
+                                <div>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="field-label">Chart title</span>
+                                        <label class="flex items-center gap-1 cursor-pointer">
+                                            <input type="checkbox" id="twoLineTitleCheckbox" class="w-3.5 h-3.5">
+                                            <span>Two lines</span>
+                                        </label>
+                                    </div>
+                                    <div class="flex flex-col gap-1">
+                                        <input id="titleLine1" type="text" class="px-1.5 py-0.5 border border-gray-300 text-sm bg-white w-full">
+                                        <input id="titleLine2" type="text" class="px-1.5 py-0.5 border border-gray-300 text-sm bg-white w-full hidden">
+                                        <button id="applyTitleBtn" class="btn-apply mt-0.5">Apply</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <span class="field-label block mb-1">Note / Source <span class="font-normal text-gray-400">(blank hides the line)</span></span>
+                                    <div class="flex flex-col gap-1">
+                                        <input id="noteInput" type="text" placeholder="Note" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-full">
+                                        <input id="sourceInput" type="text" placeholder="Source" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-full">
+                                        <button id="applyNoteSourceBtn" class="btn-apply mt-0.5">Apply</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
+
+                        <!-- ═══ Legend & Lines ═══ -->
+                        <details class="control-group">
+                            <summary>Legend &amp; Lines<span class="summary-hint">rename series, spacing, gaps</span></summary>
+                            <div class="p-3 grid grid-cols-2 gap-6">
+                                <div>
+                                    <span class="field-label block mb-1">Series names in legend</span>
+                                    <div id="legendEditorContainer" class="flex flex-col gap-1"></div>
+                                    <button id="applyLegendBtn" class="btn-apply mt-1">Apply</button>
+                                </div>
+                                <div class="space-y-2">
+                                    <div>
+                                        <span class="field-label block mb-1">Display</span>
+                                        <label class="flex items-center gap-1.5 cursor-pointer" title="Hide the legend row entirely — auto-selected when the chart has a single series. The plot expands into the space.">
+                                            <input type="checkbox" id="hideLegendCheckbox" class="w-3.5 h-3.5">
+                                            <span>Hide legend</span>
+                                        </label>
+                                    </div>
+                                    <div>
+                                        <span class="field-label block mb-1">Spacing</span>
+                                        <label class="flex items-center gap-1.5">
+                                            <span>Legend padding:</span>
+                                            <input type="range" id="legendPadding" min="-10" max="25" step="1" value="0" title="Space between the legend and the plot area. Drag left of center to tighten, right to add room. Double-click to reset." class="w-28 accent-gray-600 cursor-pointer">
+                                            <span id="legendPaddingValue" class="w-9 text-right tabular-nums">0%</span>
+                                        </label>
+                                    </div>
+                                    <div>
+                                        <span class="field-label block mb-1">Lines</span>
+                                        <label class="flex items-center gap-1.5 cursor-pointer">
+                                            <input type="checkbox" id="connectGapsCheckbox" class="w-3.5 h-3.5" checked>
+                                            <span>Connect lines across blank cells</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
+
+                        <!-- ═══ X-Axis ═══ -->
+                        <details class="control-group">
+                            <summary>X-Axis<span class="summary-hint">range, label interval, date format</span></summary>
+                            <div class="p-3 grid grid-cols-2 gap-6">
+                                <div class="space-y-3">
+                                    <div id="xRangeSection" class="hidden">
+                                        <span class="field-label block mb-1">Range shown</span>
+                                        <div class="flex items-center gap-2">
+                                            <select id="xRangeFrom" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white"></select>
+                                            <span>to</span>
+                                            <select id="xRangeTo" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white"></select>
+                                            <button id="updateXRangeBtn" class="btn-apply">Update</button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span class="field-label block mb-1">Label interval</span>
+                                        <select id="xAxisLabelMode" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white">
+                                            <option value="auto" selected>Auto (default)</option>
+                                            <option value="short">Short timeframe</option>
+                                            <option value="all">Show every point</option>
+                                            <option value="weekly">Weekly (Mondays)</option>
+                                            <option value="monthly">Monthly (first date)</option>
+                                            <option value="yearly">Yearly (first date of year)</option>
+                                        </select>
+                                        <label class="flex items-center gap-1.5 cursor-pointer mt-1.5" title="Drops a few points from the start of the chart so the axis labels land at perfectly even intervals, ending exactly on the last date.">
+                                            <input type="checkbox" id="trimForIntervalCheckbox" class="w-3.5 h-3.5">
+                                            <span>Trim start for exact intervals</span>
+                                        </label>
+                                    </div>
+                                    <div>
+                                        <span class="field-label block mb-1">Spacing</span>
+                                        <label class="flex items-center gap-1.5">
+                                            <span>X-axis padding:</span>
+                                            <input type="range" id="xAxisPadding" min="-15" max="25" step="1" value="0" title="Space below the x-axis labels. Drag left of center to tighten, right to add room. Double-click to reset." class="w-28 accent-gray-600 cursor-pointer">
+                                            <span id="xAxisPaddingValue" class="w-9 text-right tabular-nums">0%</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <span class="field-label block mb-1">Date labels</span>
+                                    <div class="flex flex-col gap-1">
+                                        <label class="flex items-center gap-1.5 cursor-pointer">
+                                            <input type="checkbox" id="hideYearCheckbox" class="w-3.5 h-3.5">
+                                            <span>Hide year</span>
+                                        </label>
+                                        <label class="flex items-center gap-1.5 cursor-pointer pl-5">
+                                            <input type="checkbox" id="showYearUnderJanCheckbox" class="w-3.5 h-3.5" disabled>
+                                            <span>Show year under first month of year</span>
+                                        </label>
+                                        <label class="flex items-center gap-1.5 cursor-pointer pl-5">
+                                            <input type="checkbox" id="showYearUnderJanuaryCheckbox" class="w-3.5 h-3.5" disabled>
+                                            <span>Show year under January</span>
+                                        </label>
+                                        <label class="flex items-center gap-1.5 cursor-pointer">
+                                            <input type="checkbox" id="hideMonthCheckbox" class="w-3.5 h-3.5">
+                                            <span>Hide month</span>
+                                        </label>
+                                        <label class="flex items-center gap-1.5 cursor-pointer">
+                                            <input type="checkbox" id="hideDayCheckbox" class="w-3.5 h-3.5">
+                                            <span>Hide day</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
+
+                        <!-- ═══ Y-Axis ═══ -->
+                        <details class="control-group">
+                            <summary>Y-Axis<span class="summary-hint">label, range, number format</span></summary>
+                            <div class="p-3 grid grid-cols-2 gap-6">
+                                <div>
+                                    <span class="field-label block mb-1">Axis label</span>
+                                    <div class="flex flex-col gap-1">
+                                        <input id="yAxisLabelInput" type="text" value="$US/MMBtu" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-48">
+                                        <button id="applyYAxisLabelBtn" class="btn-apply mt-0.5">Apply</button>
+                                    </div>
+                                </div>
+                                <div class="space-y-3">
+                                    <div>
+                                        <span class="field-label block mb-1">Range</span>
+                                        <div class="flex items-center gap-2">
+                                            <input type="number" id="yAxisMin" step="0.5" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-20" placeholder="Min">
+                                            <span>to</span>
+                                            <input type="number" id="yAxisMax" step="0.5" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-20" placeholder="Max">
+                                            <button id="applyYAxisBtn" class="btn-apply">Apply</button>
+                                            <button id="resetYAxisBtn" class="btn-apply">Reset</button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span class="field-label block mb-1">Number format</span>
+                                        <div class="flex items-center gap-2">
+                                            <input type="text" id="yAxisPrefix" value="$" class="w-10 px-1.5 py-0.5 border border-gray-300 text-xs bg-white" title="Prefix shown before each y-axis value (e.g. $). Leave blank for none.">
+                                            <span>prefix,</span>
+                                            <input type="number" id="yAxisDecimals" value="3" min="0" max="6" step="1" class="w-12 px-1.5 py-0.5 border border-gray-300 text-xs bg-white" title="Decimal places on y-axis values">
+                                            <span>decimals</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
+
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+</div>
+
+<div class="daily-prices-log fixed bottom-0 left-0 right-0 z-40">
+    <div id="logDrawer" class="bg-gray-900 border-t border-gray-700 transition-all duration-300 ease-in-out h-0 overflow-hidden">
+        <div id="logContent" class="h-64 p-4 font-mono text-xs overflow-y-auto custom-scroll text-gray-300"></div>
+    </div>
+    <button id="logToggle" class="w-full bg-gray-800 border-t border-gray-700 h-8 flex items-center justify-between px-4 text-xs font-medium text-gray-300 hover:text-white hover:bg-gray-700">
+        <div class="flex items-center gap-3">
+            <div id="statusDot" class="w-2 h-2 bg-green-500"></div>
+            <span id="statusLabel" class="uppercase tracking-wider font-semibold">Ready</span>
+            <span class="w-px h-3 bg-gray-600 mx-1"></span>
+            <span id="lastLogMsg" class="font-mono truncate max-w-md text-gray-400">System ready</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <svg id="logArrow" class="transition-transform duration-300" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
+        </div>
+    </button>
+</div>
+
+<script src="{{ url_for('static', filename='js/custom_data_chart.js') }}"></script>
+{% endblock %}

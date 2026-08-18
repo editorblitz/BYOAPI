@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Editor - NGI Data Tools</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='lib/datagrid.css') }}">
+    <style>
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0;
+            height: 100%;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f8fafc;
+            display: flex;
+            flex-direction: column;
+        }
+        body { display: flex; flex-direction: column; }
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: #fff;
+            border-bottom: 1px solid #d1d5db;
+            flex-wrap: wrap;
+        }
+        .toolbar .title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #111827;
+            margin-right: 8px;
+        }
+        .toolbar button {
+            padding: 4px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #e5e7eb;
+            border: 1px solid #d1d5db;
+            color: #111827;
+            cursor: pointer;
+        }
+        .toolbar button:hover { background: #d1d5db; }
+        .toolbar .sep { width: 1px; height: 20px; background: #d1d5db; }
+        .toolbar label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            color: #374151;
+            cursor: pointer;
+        }
+        .hint {
+            padding: 5px 12px;
+            font-size: 12px;
+            color: #6b7280;
+            background: #eff6ff;
+            border-bottom: 1px solid #dbeafe;
+        }
+        .grid-host {
+            background: #fff;
+            flex: 1;
+            min-height: 0;
+            outline: none;
+            overflow: auto;
+            position: relative;
+        }
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: #fff;
+            border-top: 1px solid #d1d5db;
+        }
+        .footer .status { font-size: 12px; color: #6b7280; }
+        .footer .actions { display: flex; gap: 8px; }
+        .btn-primary {
+            padding: 8px 18px;
+            font-size: 13px;
+            font-weight: 700;
+            background: #16a34a;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+        }
+        .btn-primary:hover { background: #15803d; }
+        .btn-cancel {
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            background: #e5e7eb;
+            border: 1px solid #d1d5db;
+            color: #374151;
+            cursor: pointer;
+        }
+        .btn-cancel:hover { background: #d1d5db; }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <span class="title">Data Editor</span>
+        <button id="addRowBtn">+ Row</button>
+        <button id="addColBtn">+ Column</button>
+        <div class="sep"></div>
+        <button id="undoBtn" title="Ctrl+Z">Undo</button>
+        <button id="redoBtn" title="Ctrl+Y">Redo</button>
+        <button id="findBtn" title="Ctrl+F">Find</button>
+        <div class="sep"></div>
+        <label><input type="checkbox" id="firstRowHeaders"> First row is series names</label>
+        <div class="sep"></div>
+        <button id="clearBtn">Clear All</button>
+    </div>
+    <div class="hint">
+        Paste from Excel with <strong>Ctrl+V</strong>, or click a cell and type. First column = dates (or labels), each other column = one chart line. Right-click for row/column actions.
+    </div>
+    <div class="grid-host" id="gridContainer" tabindex="0"></div>
+    <div class="footer">
+        <span class="status" id="statusMsg">Empty grid — paste your data to begin.</span>
+        <div class="actions">
+            <button class="btn-cancel" id="cancelBtn">Cancel</button>
+            <button class="btn-primary" id="useDataBtn">Use This Data in Chart &rarr;</button>
+        </div>
+    </div>
+    <script type="module" src="{{ url_for('static', filename='js/custom_data_chart_editor.js') }}"></script>
+</body>
+</html>

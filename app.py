@@ -3,8 +3,13 @@ BYO API Dashboard - Main Flask Application
 A secure charting app for NGI data using "Bring Your Own API" authentication.
 """
 
+import mimetypes
 import os
 from datetime import timedelta
+
+# Browsers require a JavaScript MIME type for ES module scripts; not every
+# OS mime database maps .mjs (static/lib/datagrid.mjs), so register it here.
+mimetypes.add_type('text/javascript', '.mjs')
 
 from flask import Flask, redirect, url_for, render_template, session
 from flask_session import Session
@@ -253,6 +258,14 @@ def dashboard():
             'icon': 'chart-bar',
             'category': 'charts',
             'image': 'candlestick-chart.png'
+        },
+        {
+            'name': 'Custom Data Chart',
+            'description': 'Paste data from Excel or upload a CSV to generate a publication-ready line chart from any data',
+            'url': url_for('quick_charts.custom_data_chart_page'),
+            'icon': 'chart-line',
+            'category': 'charts',
+            'image': 'custom-data-chart.png'
         }
     ]
 

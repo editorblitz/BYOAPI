@@ -1,0 +1,329 @@
+/* Styles for the @datagrid core grid (Excel-like look).
+   Adapted from the grid library's demo stylesheet. */
+
+/* Table base */
+.datagrid-table {
+  width: 100%;
+  border-collapse: collapse;
+  user-select: none;
+  table-layout: fixed;
+  font-family: Calibri, "Segoe UI", Arial, sans-serif;
+  font-size: 13px;
+  color: #000;
+}
+
+/* Column header cells (A, B, C...) */
+.datagrid-col-header {
+  text-align: center;
+  padding: 0 2px;
+  height: 22px;
+  background-color: #e6e6e6;
+  border: 1px solid #b4b4b4;
+  border-top: none;
+  color: #595959;
+  font-weight: normal;
+  font-size: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  cursor: pointer;
+}
+
+.datagrid-col-header:hover {
+  background-color: #d6d6d6;
+}
+
+.datagrid-col-header.datagrid-header-selected {
+  background-color: #c0c0c0;
+}
+
+.datagrid-col-header.datagrid-header-selected:hover {
+  background-color: #b4b4b4;
+}
+
+/* Corner cell (top-left, where row and column headers meet) */
+.datagrid-corner-header {
+  width: 36px;
+  min-width: 36px;
+  max-width: 36px;
+  height: 22px;
+  background-color: #e6e6e6;
+  border: 1px solid #b4b4b4;
+  border-top: none;
+  border-left: none;
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  cursor: pointer;
+}
+
+.datagrid-corner-header:hover {
+  background-color: #d6d6d6;
+}
+
+/* Row header cells (1, 2, 3...) */
+.datagrid-table td.datagrid-row-header {
+  width: 36px;
+  min-width: 36px;
+  max-width: 36px;
+  text-align: center;
+  background-color: #e6e6e6;
+  border: 1px solid #b4b4b4;
+  border-left: none;
+  color: #595959;
+  font-weight: normal;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.datagrid-table td.datagrid-row-header:hover {
+  background-color: #d6d6d6;
+}
+
+.datagrid-table td.datagrid-row-header.datagrid-header-selected {
+  background-color: #c0c0c0;
+}
+
+.datagrid-table td.datagrid-row-header.datagrid-header-selected:hover {
+  background-color: #b4b4b4;
+}
+
+/* Data cells */
+.datagrid-table td {
+  border-right: 1px solid #d4d4d4;
+  border-bottom: 1px solid #d4d4d4;
+  border-top: none;
+  border-left: none;
+  padding: 2px 6px;
+  height: 24px;
+  cursor: cell;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: #fff;
+}
+
+/* Spacer rows (virtualization) */
+.datagrid-table tr[data-spacer] td {
+  border: none;
+  padding: 0;
+  background: transparent;
+}
+
+/* Selection highlight */
+.datagrid-cell-selected {
+  outline: 2px solid #166daf;
+  outline-offset: -2px;
+}
+
+/* Error cells */
+.datagrid-cell-error {
+  background-color: #ffecec;
+}
+
+/* Inline editor */
+.grid-editor {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border: 2px solid #166daf;
+  outline: none;
+  padding: 0 3px;
+  margin: 0;
+  min-width: 0;
+  font: inherit;
+  background: white;
+}
+
+/* Context menu */
+.datagrid-context-menu {
+  background: #fff;
+  border: 1px solid #d4d4d4;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  min-width: 180px;
+  font-family: Calibri, "Segoe UI", Arial, sans-serif;
+  font-size: 13px;
+  z-index: 50;
+}
+
+.datagrid-context-menu-item {
+  padding: 6px 16px;
+  cursor: pointer;
+  color: #333;
+  white-space: nowrap;
+}
+
+.datagrid-context-menu-item:hover {
+  background-color: #e8f0fe;
+  color: #1a73e8;
+}
+
+.datagrid-context-menu-separator {
+  height: 1px;
+  background-color: #e0e0e0;
+  margin: 4px 0;
+}
+
+/* Column dropdown button (in header) */
+.datagrid-col-dropdown-btn {
+  float: right;
+  font-size: 9px;
+  opacity: 0;
+  cursor: pointer;
+  padding: 0 2px;
+  color: #888;
+  transition: opacity 0.15s;
+}
+
+.datagrid-col-header:hover .datagrid-col-dropdown-btn {
+  opacity: 1;
+}
+
+.datagrid-col-dropdown-btn:hover {
+  color: #333;
+}
+
+/* Column properties panel */
+.datagrid-col-properties-panel {
+  background: #fff;
+  border: 1px solid #d4d4d4;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+  padding: 12px;
+  min-width: 220px;
+  font-family: Calibri, "Segoe UI", Arial, sans-serif;
+  font-size: 13px;
+  z-index: 50;
+}
+
+.datagrid-panel-section {
+  margin-bottom: 10px;
+}
+
+.datagrid-panel-section:last-child {
+  margin-bottom: 0;
+}
+
+.datagrid-panel-label {
+  font-weight: 600;
+  font-size: 11px;
+  color: #555;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.datagrid-panel-sublabel {
+  font-size: 12px;
+  color: #666;
+  margin: 6px 0 2px;
+}
+
+.datagrid-panel-input,
+.datagrid-panel-select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font: inherit;
+  font-size: 13px;
+  background: #fff;
+}
+
+.datagrid-panel-input:focus,
+.datagrid-panel-select:focus,
+.datagrid-panel-input-small:focus {
+  outline: none;
+  border-color: #166daf;
+}
+
+.datagrid-panel-input-small {
+  width: 60px;
+  padding: 3px 6px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font: inherit;
+  font-size: 13px;
+}
+
+.datagrid-panel-hint {
+  font-style: italic;
+  color: #999;
+  font-size: 12px;
+}
+
+/* Search bar (Ctrl+F) */
+.datagrid-search-bar {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: #f5f5f5;
+  border-bottom: 1px solid #d4d4d4;
+  font-family: Calibri, "Segoe UI", Arial, sans-serif;
+  font-size: 13px;
+}
+
+.datagrid-search-input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font: inherit;
+  font-size: 13px;
+  min-width: 120px;
+  max-width: 300px;
+}
+
+.datagrid-search-input:focus {
+  outline: none;
+  border-color: #166daf;
+  box-shadow: 0 0 0 2px rgba(22, 109, 175, 0.15);
+}
+
+.datagrid-search-filter-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  color: #555;
+}
+
+.datagrid-search-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: #888;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.datagrid-search-close:hover {
+  color: #333;
+}
+
+/* Search match highlight */
+.datagrid-cell-search-match {
+  background-color: #fff3cd !important;
+}
+
+/* First row as label (header row) */
+.datagrid-label-row td {
+  font-weight: 700;
+  background: #f8f8f8 !important;
+}
+
+.datagrid-label-row td.datagrid-row-header {
+  font-weight: normal;
+  background: #e6e6e6 !important;
+}

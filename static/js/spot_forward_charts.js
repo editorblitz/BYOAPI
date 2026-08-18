@@ -690,11 +690,11 @@ const SpotForwardCharts = {
                     bottom: '1.6%',
                     style: {
                         text: `{bold|Source:} ${this.customSource || this.getDefaultSource()}`,
-                        font: '12px Arial',
+                        font: '14px Arial',
                         rich: {
                             bold: {
                                 fontWeight: 'bold',
-                                fontSize: 12,
+                                fontSize: 14,
                                 fontFamily: 'Arial'
                             }
                         },

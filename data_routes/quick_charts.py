@@ -88,6 +88,20 @@ def candlestick_chart_page():
     return render_template('candlestick_chart.html')
 
 
+@quick_charts_bp.route('/custom-data-chart')
+@require_api_creds
+def custom_data_chart_page():
+    """Render the Custom Data Chart page (paste/upload your own data; no NGI API calls)."""
+    return render_template('custom_data_chart.html')
+
+
+@quick_charts_bp.route('/custom-data-chart/editor')
+@require_api_creds
+def custom_data_chart_editor_page():
+    """Render the pop-out Data Editor grid for the Custom Data Chart."""
+    return render_template('custom_data_chart_editor.html')
+
+
 @quick_charts_bp.route('/api/quick-charts')
 @require_api_creds_json
 def api_quick_charts():

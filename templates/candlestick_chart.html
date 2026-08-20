@@ -24,7 +24,7 @@
         }
         .main-content {
             padding: 0;
-            padding-top: calc(52px + 1rem); /* Offset for fixed navbar */
+            padding-top: 1rem;
             max-width: 100%;
         }
         .footer { display: none; }
@@ -463,14 +463,19 @@
                         <div class="control-stack">
                             <div class="field">
                                 <label>Chart Title</label>
-                                <input type="text" id="chartTitle" value="NGI's Henry Hub Daily Gas Price and NYMEX Prompt Month Futures">
+                                <input type="text" id="chartTitle" value="NGI's Henry Hub Daily Gas Price &amp;">
+                            </div>
+                            <div class="field">
+                                <label>Title Line 2 <span style="font-weight:400;color:#94a3b8">(optional &mdash; splits the title onto two lines)</span></label>
+                                <input type="text" id="chartTitle2" value="NYMEX Prompt Month Futures" placeholder="Leave blank for a single-line title">
                             </div>
                             <div class="control-grid">
                                 <div class="field">
                                     <label>Color Scheme</label>
                                     <select id="colorScheme">
                                         <option value="editorRedGreen" selected>Red / Green</option>
-                                        <option value="ngiBlueEditorRed">Blue / Red</option>
+                                        <option value="ngiBlueEditorRed">Blue / White</option>
+                                        <option value="blackWhite">Gray / White</option>
                                     </select>
                                 </div>
                                 <div class="field">
@@ -490,6 +495,7 @@
                                     </select>
                                 </div>
                             </div>
+                            <label class="check-row" style="margin-top:6px;"><input type="checkbox" id="yearLabels"> Year-only x-axis labels (YYYY) &mdash; for long timeframes</label>
                             <div id="customDateRange" class="custom-panel" style="display:none;">
                                 <div class="custom-panel-title" style="margin-bottom:5px;">Custom Date Range</div>
                                 <div class="control-grid">

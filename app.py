@@ -94,11 +94,26 @@ def index():
     return redirect(url_for('auth.login'))
 
 
-@app.route('/dashboard')
-@require_api_creds
-def dashboard():
-    """Main dashboard hub with links to all tools."""
-    tools = [
+# ============= TOOL REGISTRY =============
+
+# Single source of truth for how tools are grouped: navbar dropdowns and
+# dashboard sections/filters all render from this structure.
+TOOL_GROUPS = [
+    {'key': 'tools', 'label': 'Tools', 'sections': [
+        {'key': 'spot', 'heading': 'Spot Prices'},
+        {'key': 'forwards', 'heading': 'Forward Look'},
+        {'key': 'lng', 'heading': 'LNG'},
+    ]},
+    {'key': 'charts', 'label': 'Chart Generators', 'sections': [
+        {'key': 'auto', 'heading': 'Automated Charts'},
+        {'key': 'custom', 'heading': 'Custom Charts'},
+    ]},
+]
+
+
+def get_tools():
+    """All dashboard tools, in display order. Requires a request context (url_for)."""
+    return [
         {
             'name': 'Spot Prices',
             'description': 'View and chart daily natural gas prices, compare locations, analyze spreads, and explore seasonal patterns',
@@ -184,7 +199,7 @@ def dashboard():
             'description': 'Generate publication-ready midday alert charts for a single location',
             'url': url_for('quick_charts.midday_charts_page'),
             'icon': 'chart-line',
-            'category': 'charts',
+            'category': 'auto',
             'image': 'midday-charts.png'
         },
         {
@@ -192,7 +207,7 @@ def dashboard():
             'description': 'Compare multiple locations on publication-ready midday alert charts',
             'url': url_for('quick_charts.midday_charts_multi_page'),
             'icon': 'chart-line',
-            'category': 'charts',
+            'category': 'auto',
             'image': 'midday-charts-multi.png'
         },
         {
@@ -200,7 +215,7 @@ def dashboard():
             'description': 'Generate publication-ready daily price charts for a single location',
             'url': url_for('quick_charts.daily_spot_charts_page'),
             'icon': 'chart-bar',
-            'category': 'charts',
+            'category': 'auto',
             'image': 'daily-spot-charts.png'
         },
         {
@@ -208,7 +223,7 @@ def dashboard():
             'description': 'Generate daily price range charts showing high, low, and average with legend',
             'url': url_for('quick_charts.daily_highlow_charts_page'),
             'icon': 'chart-bar',
-            'category': 'charts',
+            'category': 'auto',
             'image': 'daily-highlow-charts.png'
         },
         {
@@ -216,7 +231,7 @@ def dashboard():
             'description': 'Compare multiple locations on publication-ready daily price charts',
             'url': url_for('quick_charts.daily_spot_charts_multi_page'),
             'icon': 'chart-bar',
-            'category': 'charts',
+            'category': 'auto',
             'image': 'daily-spot-charts-multi.png'
         },
         {
@@ -224,7 +239,7 @@ def dashboard():
             'description': 'Generate a publication-ready chart of the daily price spread between two locations',
             'url': url_for('quick_charts.daily_spot_spread_chart_page'),
             'icon': 'chart-bar',
-            'category': 'charts',
+            'category': 'auto',
             'image': 'daily-spot-spread-chart.png'
         },
         {
@@ -232,7 +247,7 @@ def dashboard():
             'description': 'Generate publication-ready forward curve charts showing price evolution across trade dates',
             'url': url_for('quick_charts.forward_curve_charts_page'),
             'icon': 'chart-line',
-            'category': 'charts',
+            'category': 'auto',
             'image': 'forward-curve-multi-date-charts.png'
         },
         {
@@ -240,7 +255,7 @@ def dashboard():
             'description': 'Combine daily spot prices with forward curve on a single chart showing historical and future prices',
             'url': url_for('quick_charts.spot_forward_charts_page'),
             'icon': 'chart-line',
-            'category': 'charts',
+            'category': 'auto',
             'image': 'spot-forward-charts.png'
         },
         {
@@ -248,7 +263,7 @@ def dashboard():
             'description': 'Compare forward curves for multiple locations on a single trade date with publication-ready styling',
             'url': url_for('quick_charts.forward_charts_multi_page'),
             'icon': 'chart-line',
-            'category': 'charts',
+            'category': 'auto',
             'image': 'forward-charts-multi.png'
         },
         {
@@ -256,20 +271,58 @@ def dashboard():
             'description': 'Publication-ready candlestick chart of Nymex prompt-month futures overlaid with Henry Hub (and optional Chicago Citygate) daily spot range',
             'url': url_for('quick_charts.candlestick_chart_page'),
             'icon': 'chart-bar',
-            'category': 'charts',
+            'category': 'auto',
             'image': 'candlestick-chart.png'
         },
         {
-            'name': 'Custom Data Chart',
-            'description': 'Paste data from Excel or upload a CSV to generate a publication-ready line chart from any data',
+            'name': 'NGI Line Chart',
+            'description': "Paste tabular data or upload a CSV (like from NGI's Daily Historical Data page)",
             'url': url_for('quick_charts.custom_data_chart_page'),
             'icon': 'chart-line',
-            'category': 'charts',
+            'category': 'custom',
             'image': 'custom-data-chart.png'
+        },
+        {
+            'name': 'Entropic Line Chart',
+            'description': 'Paste tabular data or upload a CSV',
+            'url': url_for('quick_charts.entropic_line_chart_page'),
+            'icon': 'chart-line',
+            'category': 'custom',
+            'image': 'entropic-line-chart.png'
+        },
+        {
+            'name': 'Entropic Bar/Line Chart',
+            'description': 'Stacked bars plus a line on a second axis, from pasted data or a CSV',
+            'url': url_for('quick_charts.entropic_bar_line_chart_page'),
+            'icon': 'chart-bar',
+            'category': 'custom',
+            'image': 'entropic-bar-line-chart.png'
         }
     ]
 
-    return render_template('dashboard.html', tools=tools)
+
+@app.context_processor
+def inject_nav_groups():
+    """Expose the grouped tool registry to all templates (navbar + dashboard)."""
+    if not session.get('user_email'):
+        return {'nav_groups': []}
+    tools = get_tools()
+    groups = []
+    for group in TOOL_GROUPS:
+        sections = [{
+            'key': s['key'],
+            'heading': s['heading'],
+            'tools': [t for t in tools if t['category'] == s['key']],
+        } for s in group['sections']]
+        groups.append({'key': group['key'], 'label': group['label'], 'sections': sections})
+    return {'nav_groups': groups}
+
+
+@app.route('/dashboard')
+@require_api_creds
+def dashboard():
+    """Main dashboard hub with links to all tools."""
+    return render_template('dashboard.html')
 
 
 # ============= ERROR HANDLERS =============

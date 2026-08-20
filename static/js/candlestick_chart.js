@@ -140,9 +140,15 @@ const SPOT_SLOT_STYLES = {
   spot2: { line: '#d97706', area: '#d97706', lineWidth: 1.15 },
   manual: { line: '#0891b2', area: '#0891b2', lineWidth: 1.5 },
 };
-const DEFAULT_TITLE_PRIMARY_SPOT = "NGI's Henry Hub Daily Gas Price and NYMEX Prompt Month Futures";
-const DEFAULT_TITLE_MULTI_SPOT = "NGI's Daily Spot Gas Prices and NYMEX Prompt Month Futures";
-const DEFAULT_TITLE_FUTURES_ONLY = "NYMEX Prompt Month Futures";
+// Default titles per series-visibility state, as {line1, line2} pairs
+// (line2 = '' renders a single-line title).
+const DEFAULT_TITLE_PRIMARY_SPOT = { line1: "NGI's Henry Hub Daily Gas Price &", line2: "NYMEX Prompt Month Futures" };
+const DEFAULT_TITLE_MULTI_SPOT = { line1: "NGI's Daily Natural Gas Prices &", line2: "NYMEX Prompt Month Futures" };
+// Pre-two-line multi-spot default, still recognized for the auto-swap
+const LEGACY_TITLE_MULTI_SPOT = { line1: "NGI's Daily Spot Gas Prices and NYMEX Prompt Month Futures", line2: "" };
+const DEFAULT_TITLE_FUTURES_ONLY = { line1: "NYMEX Prompt Month Futures", line2: "" };
+// Pre-two-line default, still recognized so the auto-swap keeps working
+const LEGACY_TITLE_PRIMARY_SPOT = { line1: "NGI's Henry Hub Daily Gas Price and NYMEX Prompt Month Futures", line2: "" };
 let futuresDataSourceLabel = '';
 let futuresDataLoadWarning = '';
 let cashDataSourceLabel = 'NGI API';
@@ -483,9 +489,27 @@ function syncTitleToSpotSelection() {
   else if (showChicago) target = DEFAULT_TITLE_MULTI_SPOT;
   else target = DEFAULT_TITLE_PRIMARY_SPOT;
 
-  const knownTitles = [DEFAULT_TITLE_PRIMARY_SPOT, DEFAULT_TITLE_MULTI_SPOT, DEFAULT_TITLE_FUTURES_ONLY];
-  if (knownTitles.indexOf(titleEl.value) !== -1 && titleEl.value !== target) {
-    titleEl.value = target;
+  // Only auto-swap if the current title is one of the known defaults
+  // (a user-typed title is never overwritten).
+  const title2El = document.getElementById('chartTitle2');
+  const line2 = title2El ? title2El.value : '';
+  const knownTitles = [DEFAULT_TITLE_PRIMARY_SPOT, DEFAULT_TITLE_MULTI_SPOT, DEFAULT_TITLE_FUTURES_ONLY, LEGACY_TITLE_PRIMARY_SPOT, LEGACY_TITLE_MULTI_SPOT];
+  const isKnown = knownTitles.some(t => t.line1 === titleEl.value && (t.line2 || '') === line2);
+  if (isKnown && (titleEl.value !== target.line1 || line2 !== (target.line2 || ''))) {
+    titleEl.value = target.line1;
+    if (title2El) title2El.value = target.line2 || '';
+  }
+
+  // Source line follows the same pattern: futures-only charts have no NGI
+  // price data, so the source is just CME. Only swap known defaults.
+  const sourceEl = document.getElementById('sourceText');
+  if (sourceEl) {
+    const SOURCE_DEFAULT = "Source: NGI's Daily Gas Price Index, CME";
+    const SOURCE_FUTURES_ONLY = 'Source: CME';
+    const sourceTarget = (showFutures && !showSpot && !showChicago) ? SOURCE_FUTURES_ONLY : SOURCE_DEFAULT;
+    if ((sourceEl.value === SOURCE_DEFAULT || sourceEl.value === SOURCE_FUTURES_ONLY) && sourceEl.value !== sourceTarget) {
+      sourceEl.value = sourceTarget;
+    }
   }
 }
 
@@ -495,7 +519,10 @@ const DEFAULT_SPOT_AREA = '#0891b2';
 
 const SCHEMES = {
   editorRedGreen:    { bullish:'#4db37f', bearish:'#df5959', bearishStroke:'#df5959', wick:null, spotLine:DEFAULT_SPOT_LINE, spotArea:DEFAULT_SPOT_AREA },
-  ngiBlueEditorRed:  { bullish:'#3b82c4', bearish:'#df5959', bearishStroke:'#df5959', wick:null, spotLine:DEFAULT_SPOT_LINE, spotArea:DEFAULT_SPOT_AREA },
+  // Blue/White: hollow (white) up candles outlined in the line-chart dark navy, solid navy down candles
+  ngiBlueEditorRed:  { bullish:'#ffffff', bullishStroke:'#1d4063', bearish:'#1d4063', bearishStroke:null, wick:'#1d4063', spotLine:DEFAULT_SPOT_LINE, spotArea:DEFAULT_SPOT_AREA },
+  // Print style, softened: hollow (white) up candles with gray outline, solid gray down candles
+  blackWhite:        { bullish:'#ffffff', bullishStroke:'#6b7280', bearish:'#6b7280', bearishStroke:null, wick:'#6b7280', spotLine:'#9ca3af', spotArea:'#d1d5db' },
 };
 
 function hexToRgba(hex, alpha) {
@@ -712,6 +739,9 @@ function generateChart() {
 
   const scheme = resolveScheme();
   const title = document.getElementById('chartTitle').value || '';
+  const title2El = document.getElementById('chartTitle2');
+  const title2 = title2El ? title2El.value.trim() : '';
+  const twoLineTitle = title2 !== '';
   const source = document.getElementById('sourceText').value || '';
   const noteOn = document.getElementById('showNote') && document.getElementById('showNote').checked;
   const noteRaw = document.getElementById('noteText') ? document.getElementById('noteText').value : '';
@@ -731,40 +761,66 @@ function generateChart() {
   const priceLevels = getPriceLevels();
   const hasLevels = priceLevels.length > 0;
   const levelOffset = document.getElementById('levelOffset').checked && hasMA && hasLevels;
-  let rightPad = 28;
+  // Default right pad = marginRight so the plot's right edge aligns with the
+  // right end of the title divider line (editor feedback). MA/level labels
+  // still get extra room when shown.
+  let rightPad = marginRight;
   if (levelOffset) rightPad = 170;
   else if (hasLevels) rightPad = 100;
   else if (hasMA) rightPad = 70;
   const showSpot = document.getElementById('showSpot').checked && visibleSpotSeries.length > 0;
   const showFutures = document.getElementById('showFutures').checked;
-  const pad = { top: showSpot ? 88 : 72, right: rightPad, bottom: note ? 130 : 112, left: 96 };
+  // left: 107 (was 96) matches the editor's target: the whole plot shifts
+  // right ~11px, giving the rotated y-axis label breathing room
+  // Horizontal YYYY labels need far less bottom room than the diagonal dates,
+  // so the plot extends lower in year-label mode.
+  const yearLabelsOn = !!(document.getElementById('yearLabels') && document.getElementById('yearLabels').checked);
+  const pad = { top: (showSpot ? 88 : 72) + (twoLineTitle ? 16 : 0), right: rightPad, bottom: (note ? 130 : 112) - (yearLabelsOn ? 56 : 0), left: 107 };
   const chartW = W - pad.left - pad.right;
   const chartH = H - pad.top - pad.bottom;
 
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, W, H);
 
+  const logoH = 32;
+  const logoW = logoImg ? logoImg.width * (logoH / logoImg.height) : 0;
   if (logoImg) {
-    const logoH = 32;
-    const logoW = logoImg.width * (logoH / logoImg.height);
     ctx.drawImage(logoImg, W - marginRight - logoInset - logoW, 8, logoW, logoH);
   }
 
+  // Title: shrink the font as needed so it always keeps a clear gap from the
+  // NGI logo instead of running into it (editor feedback).
   ctx.fillStyle = COLOR_TITLE;
-  ctx.font = 'bold 22px ' + FONT;
+  let titleFont = 22;
+  ctx.font = 'bold ' + titleFont + 'px ' + FONT;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.fillText(title, marginLeft, 10);
+  const titleMaxW = W - marginRight - logoInset - logoW - 16 - marginLeft;
+  const widestTitleLine = () => Math.max(
+    ctx.measureText(title).width,
+    twoLineTitle ? ctx.measureText(title2).width : 0
+  );
+  while (titleFont > 15 && widestTitleLine() > titleMaxW) {
+    titleFont -= 1;
+    ctx.font = 'bold ' + titleFont + 'px ' + FONT;
+  }
+  if (twoLineTitle) {
+    ctx.fillText(title, marginLeft, 6);
+    ctx.fillText(title2, marginLeft, 6 + titleFont + 4);
+  } else {
+    ctx.fillText(title, marginLeft, 10 + Math.round((22 - titleFont) / 2));
+  }
 
   ctx.strokeStyle = COLOR_ACCENT;
   ctx.lineWidth = 1.4;
   ctx.beginPath();
-  ctx.moveTo(marginLeft, 48);
-  ctx.lineTo(W - marginRight, 48);
+  const dividerY = twoLineTitle ? 64 : 48;
+  ctx.moveTo(marginLeft, dividerY);
+  ctx.lineTo(W - marginRight, dividerY);
   ctx.stroke();
 
   if (showSpot) {
-    const legendY = 60;
+    const legendY = twoLineTitle ? 76 : 60;
     const legendH = 14;
     const legendFont = '15px ' + FONT;
     const cw = 7;
@@ -788,6 +844,11 @@ function generateChart() {
     if (showFutures) {
       ctx.fillStyle = scheme.bullish;
       ctx.fillRect(legendX, legendY, cw, legendH);
+      if (scheme.bullishStroke) {
+        ctx.strokeStyle = scheme.bullishStroke;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(legendX, legendY, cw, legendH);
+      }
       legendX += cw + 2;
       ctx.fillStyle = scheme.bearish;
       ctx.fillRect(legendX, legendY, cw, legendH);
@@ -911,7 +972,9 @@ function generateChart() {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   const yCenter = pad.top + chartH / 2;
-  ctx.translate(marginLeft, yCenter);
+  // +9 centers the label in the wider left gutter (editor's target puts it
+  // at x=25 rather than hugging the canvas edge at x=16)
+  ctx.translate(marginLeft + 9, yCenter);
   ctx.rotate(-Math.PI / 2);
   ctx.fillText('$US/MMBtu', 0, 0);
   ctx.restore();
@@ -981,8 +1044,9 @@ function generateChart() {
       const bodyH = Math.max(1, bot - top);
       ctx.fillStyle = bodyColor;
       ctx.fillRect(x - candleW / 2, top, candleW, bodyH);
-      if (!bullish && scheme.bearishStroke) {
-        ctx.strokeStyle = scheme.bearishStroke;
+      const bodyStroke = bullish ? scheme.bullishStroke : scheme.bearishStroke;
+      if (bodyStroke) {
+        ctx.strokeStyle = bodyStroke;
         ctx.lineWidth = 1;
         ctx.strokeRect(x - candleW / 2, top, candleW, bodyH);
       }
@@ -1087,27 +1151,57 @@ function generateChart() {
     }
   }
 
-  const numLabels = 13;
   const yBase = pad.top + chartH;
-  for (let li = 0; li < numLabels; li++) {
-    const x = pad.left + (chartW * li / (numLabels - 1));
-    const i = Math.min(n - 1, Math.max(0, Math.round((x - pad.left - gap / 2) / gap)));
-    const d = visibleData[i];
-    ctx.strokeStyle = COLOR_GRID;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x, yBase);
-    ctx.lineTo(x, yBase + 4);
-    ctx.stroke();
-    ctx.save();
-    ctx.translate(x, yBase + 6);
-    ctx.rotate(-Math.PI / 4);
+  if (yearLabelsOn) {
+    // Year-only mode: one horizontal YYYY label per calendar year, left-aligned
+    // at that year's first visible candle. Labels that would overlap the
+    // previous one are skipped (dense multi-decade views drop to every other
+    // year automatically).
     ctx.fillStyle = COLOR_AXIS;
     ctx.font = '14px ' + FONT;
-    ctx.textAlign = 'right';
+    ctx.textAlign = 'center';   // year centered directly under its tick
     ctx.textBaseline = 'top';
-    ctx.fillText(formatDateLabel(d.date), 0, 0);
-    ctx.restore();
+    let prevYear = null;
+    let lastLabelRight = -Infinity;
+    for (let i = 0; i < n; i++) {
+      const yr = visibleData[i].date.getFullYear();
+      if (yr === prevYear) continue;
+      prevYear = yr;
+      const x = pad.left + gap * i + gap / 2;
+      const text = String(yr);
+      const labelW = ctx.measureText(text).width;
+      if (x - labelW / 2 < lastLabelRight + 10 || x + labelW / 2 > W - pad.right + 12) continue;
+      lastLabelRight = x + labelW / 2;
+      ctx.strokeStyle = COLOR_GRID;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, yBase);
+      ctx.lineTo(x, yBase + 4);
+      ctx.stroke();
+      ctx.fillText(text, x, yBase + 8);
+    }
+  } else {
+    const numLabels = 13;
+    for (let li = 0; li < numLabels; li++) {
+      const x = pad.left + (chartW * li / (numLabels - 1));
+      const i = Math.min(n - 1, Math.max(0, Math.round((x - pad.left - gap / 2) / gap)));
+      const d = visibleData[i];
+      ctx.strokeStyle = COLOR_GRID;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, yBase);
+      ctx.lineTo(x, yBase + 4);
+      ctx.stroke();
+      ctx.save();
+      ctx.translate(x, yBase + 6);
+      ctx.rotate(-Math.PI / 4);
+      ctx.fillStyle = COLOR_AXIS;
+      ctx.font = '14px ' + FONT;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'top';
+      ctx.fillText(formatDateLabel(d.date), 0, 0);
+      ctx.restore();
+    }
   }
 
   ctx.strokeStyle = COLOR_GRID;
@@ -1839,6 +1933,8 @@ function wireEvents() {
   document.getElementById('dateTo').addEventListener('change', generateChart);
 
   document.getElementById('chartTitle').addEventListener('input', generateChart);
+  document.getElementById('chartTitle2').addEventListener('input', generateChart);
+  document.getElementById('yearLabels').addEventListener('change', generateChart);
   document.getElementById('cashInput').addEventListener('input', function() {
     cashDataSourceLabel = 'manual';
     const cb = document.getElementById('showChicagoCitygate');

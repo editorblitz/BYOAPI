@@ -91,8 +91,66 @@ def candlestick_chart_page():
 @quick_charts_bp.route('/custom-data-chart')
 @require_api_creds
 def custom_data_chart_page():
-    """Render the Custom Data Chart page (paste/upload your own data; no NGI API calls)."""
-    return render_template('custom_data_chart.html')
+    """Render the NGI Line Chart page (paste/upload your own data; no NGI API calls)."""
+    return render_template('custom_data_chart.html', line_chart_config={
+        'page_name': 'NGI Line Chart',
+        'show_ngi_tip': True,
+        'logo_url': '/static/images/ngi_logo.png',
+        'logo_width': 70,
+        'logo_height': 35,
+        'chart_height': 400,    # display is 750px wide; height sets the aspect ratio
+        'export_width': 1656,
+        'export_height': 894,
+        'storage_key': 'customDataChart.lastInput',
+    })
+
+
+@quick_charts_bp.route('/entropic-line-chart')
+@require_api_creds
+def entropic_line_chart_page():
+    """Render the Entropic Line Chart page (same tool as the NGI Line Chart, Entropic branding)."""
+    return render_template('custom_data_chart.html', line_chart_config={
+        'page_name': 'Entropic Line Chart',
+        'show_ngi_tip': False,
+        'logo_url': '/static/images/entropiclogo.png',
+        'logo_width': 100,  # entropiclogo.png is 2410x1036; 100x43 keeps its aspect ratio
+        'logo_height': 43,
+        'logo_right': 25,   # flush with the right end of the title divider line
+        'logo_center': True,  # vertically center the logo between the top edge and the divider
+        'chart_height': 427,  # 750x427 = 1.757, the Entropic house aspect ratio
+        'export_width': 1500,
+        'export_height': 854,
+        'default_source': "NGI's Entropic Analytics",
+        'storage_key': 'entropicLineChart.lastInput',
+        'aspect_options': [
+            {'label': 'Entropic — exports 1500×854', 'chart_height': 427, 'export_width': 1500, 'export_height': 854},
+            {'label': 'Classic — exports 1656×894', 'chart_height': 400, 'export_width': 1656, 'export_height': 894},
+        ],
+    })
+
+
+@quick_charts_bp.route('/entropic-bar-line-chart')
+@require_api_creds
+def entropic_bar_line_chart_page():
+    """Render the Entropic Bar/Line Chart page (stacked bars + line on a second axis)."""
+    return render_template('entropic_bar_line_chart.html', line_chart_config={
+        'page_name': 'Entropic Bar/Line Chart',
+        'show_ngi_tip': False,
+        'logo_url': '/static/images/entropiclogo.png',
+        'logo_width': 100,
+        'logo_height': 43,
+        'logo_right': 25,
+        'logo_center': True,
+        'chart_height': 427,
+        'export_width': 1500,
+        'export_height': 854,
+        'default_source': "NGI's Entropic Analytics",
+        'storage_key': 'entropicBarLineChart.lastInput',
+        'aspect_options': [
+            {'label': 'Entropic — exports 1500×854', 'chart_height': 427, 'export_width': 1500, 'export_height': 854},
+            {'label': 'Classic — exports 1656×894', 'chart_height': 400, 'export_width': 1656, 'export_height': 894},
+        ],
+    })
 
 
 @quick_charts_bp.route('/custom-data-chart/editor')

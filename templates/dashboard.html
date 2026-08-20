@@ -4,41 +4,96 @@
 
 {% block head %}
 <style>
-    /* Filter bar */
+    /* Filter bars */
+    .filter-bars {
+        margin-bottom: 2rem;
+        padding: 1rem 1.25rem;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-sm);
+    }
+
     .filter-bar {
         display: flex;
         align-items: center;
-        gap: 0.25rem;
-        margin-bottom: 1.5rem;
+        gap: 0.375rem;
+        flex-wrap: wrap;
+    }
+
+    .filter-bar + .filter-bar {
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--border-light);
     }
 
     .filter-label {
         color: var(--text-muted);
-        font-size: 0.813rem;
-        margin-right: 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-right: 0.75rem;
+        min-width: 3.5rem;
     }
 
     .filter-btn {
-        padding: 0.375rem 0.75rem;
-        border: 1px solid transparent;
-        border-radius: var(--radius-sm);
-        background: transparent;
-        color: var(--text-muted);
-        font-size: 0.813rem;
+        padding: 0.5rem 1.125rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        background: var(--card-bg);
+        color: var(--text-secondary);
+        font-size: 0.938rem;
         font-weight: 500;
         cursor: pointer;
         transition: all 0.15s ease;
     }
 
     .filter-btn:hover {
-        border-color: var(--border-color);
-        color: var(--text-color);
+        border-color: var(--primary-light);
+        color: var(--primary-color);
     }
 
-    .filter-btn.active {
-        color: var(--text-color);
-        background: var(--bg-color);
-        border-color: var(--border-color);
+    /* Top-level group buttons: filled active state */
+    .group-btn.active {
+        color: #ffffff;
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+        box-shadow: var(--shadow-sm);
+    }
+
+    /* Sub-filter buttons: slightly smaller, tinted active state */
+    .sub-btn {
+        padding: 0.375rem 0.875rem;
+        font-size: 0.875rem;
+    }
+
+    .sub-btn.active {
+        color: var(--accent-text);
+        background: var(--accent-soft);
+        border-color: var(--primary-light);
+    }
+
+    /* Restored-selection note: soft blue status chip, monochrome with the panel */
+    .filter-restored {
+        margin-left: 0.75rem;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.813rem;
+        color: var(--accent-text);
+        background: var(--accent-soft);
+        border-radius: 999px;
+        white-space: nowrap;
+    }
+
+    .filter-restored a {
+        color: var(--accent-text);
+        font-weight: 600;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
+
+    .filter-restored a:hover {
+        color: var(--primary-color);
     }
 
     /* Sections */
@@ -66,8 +121,30 @@
         margin-bottom: 0.75rem;
     }
 
+    /* Search box */
+    .tool-search {
+        margin-left: auto;
+        width: 220px;
+        max-width: 100%;
+        padding: 0.45rem 0.875rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        background: var(--card-bg);
+        color: var(--text-color);
+        font-size: 0.875rem;
+        font-family: inherit;
+    }
+
+    .tool-search:focus {
+        outline: none;
+        border-color: var(--primary-light);
+        box-shadow: 0 0 0 3px var(--focus-ring);
+    }
+
     /* Hidden state for filtering */
-    .tool-section.hidden {
+    .tool-section.hidden,
+    .filter-bar.hidden,
+    .tool-card.hidden {
         display: none;
     }
 </style>
@@ -75,19 +152,38 @@
 
 {% block content %}
 <div class="dashboard">
-    <div class="filter-bar">
-        <span class="filter-label">Filter:</span>
-        <button class="filter-btn active" data-category="all">All</button>
-        <button class="filter-btn" data-category="spot">Spot Prices</button>
-        <button class="filter-btn" data-category="forwards">Forward Look</button>
-        <button class="filter-btn" data-category="lng">LNG</button>
-        <button class="filter-btn" data-category="charts">Chart Generators</button>
+    <div class="filter-bars">
+        <div class="filter-bar">
+            <span class="filter-label">Group:</span>
+            <button class="filter-btn group-btn active" data-group="all">All</button>
+            <button class="filter-btn group-btn" data-group="tools">Tools</button>
+            <button class="filter-btn group-btn" data-group="charts">Chart Generators</button>
+            <span class="filter-restored" id="filterRestored" hidden>Showing your last view &middot; <a href="#" id="showAllLink">Show all</a></span>
+            <input type="search" id="toolSearch" class="tool-search" placeholder="Search tools&hellip;" autocomplete="off">
+        </div>
+
+        <div class="filter-bar sub-filter-bar hidden" data-subbar="tools">
+            <span class="filter-label">Filter:</span>
+            <button class="filter-btn sub-btn active" data-categories="all">All</button>
+            <button class="filter-btn sub-btn" data-categories="spot">Spot</button>
+            <button class="filter-btn sub-btn" data-categories="forwards">Forwards</button>
+            <button class="filter-btn sub-btn" data-categories="lng">LNG</button>
+        </div>
+
+        <div class="filter-bar sub-filter-bar hidden" data-subbar="charts">
+            <span class="filter-label">Filter:</span>
+            <button class="filter-btn sub-btn active" data-categories="all">All</button>
+            <button class="filter-btn sub-btn" data-categories="auto">Automated Charts</button>
+            <button class="filter-btn sub-btn" data-categories="custom">Custom Charts</button>
+        </div>
     </div>
 
-    <section class="tool-section" data-category="spot">
-        <h2 class="section-heading">Spot Prices</h2>
+    {% for group in nav_groups %}
+    {% for section in group.sections %}
+    <section class="tool-section" data-group="{{ group.key }}" data-category="{{ section.key }}">
+        <h2 class="section-heading">{{ section.heading }}</h2>
         <div class="tools-grid">
-            {% for tool in tools if tool.category == 'spot' %}
+            {% for tool in section.tools %}
             <a href="{{ tool.url }}" class="tool-card">
                 <div class="tool-image">
                     <img src="{{ url_for('static', filename='images/tools/' + tool.image) }}" alt="{{ tool.name }}" onerror="this.parentElement.innerHTML='<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 400 200\' width=\'100%\' height=\'100%\'><rect width=\'400\' height=\'200\' fill=\'#e5e7eb\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-family=\'Arial\' font-size=\'14\' fill=\'#9ca3af\'>Image Placeholder</text></svg>'">
@@ -100,84 +196,150 @@
             {% endfor %}
         </div>
     </section>
-
-    <section class="tool-section" data-category="forwards">
-        <h2 class="section-heading">Forward Look</h2>
-        <div class="tools-grid">
-            {% for tool in tools if tool.category == 'forwards' %}
-            <a href="{{ tool.url }}" class="tool-card">
-                <div class="tool-image">
-                    <img src="{{ url_for('static', filename='images/tools/' + tool.image) }}" alt="{{ tool.name }}" onerror="this.parentElement.innerHTML='<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 400 200\' width=\'100%\' height=\'100%\'><rect width=\'400\' height=\'200\' fill=\'#e5e7eb\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-family=\'Arial\' font-size=\'14\' fill=\'#9ca3af\'>Image Placeholder</text></svg>'">
-                </div>
-                <div class="tool-content">
-                    <h3>{{ tool.name }}</h3>
-                    <p>{{ tool.description }}</p>
-                </div>
-            </a>
-            {% endfor %}
-        </div>
-    </section>
-
-    <section class="tool-section" data-category="lng">
-        <h2 class="section-heading">LNG</h2>
-        <div class="tools-grid">
-            {% for tool in tools if tool.category == 'lng' %}
-            <a href="{{ tool.url }}" class="tool-card">
-                <div class="tool-image">
-                    <img src="{{ url_for('static', filename='images/tools/' + tool.image) }}" alt="{{ tool.name }}" onerror="this.parentElement.innerHTML='<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 400 200\' width=\'100%\' height=\'100%\'><rect width=\'400\' height=\'200\' fill=\'#e5e7eb\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-family=\'Arial\' font-size=\'14\' fill=\'#9ca3af\'>Image Placeholder</text></svg>'">
-                </div>
-                <div class="tool-content">
-                    <h3>{{ tool.name }}</h3>
-                    <p>{{ tool.description }}</p>
-                </div>
-            </a>
-            {% endfor %}
-        </div>
-    </section>
-
-    <section class="tool-section" data-category="charts">
-        <h2 class="section-heading">Chart Generators</h2>
-        <div class="tools-grid">
-            {% for tool in tools if tool.category == 'charts' %}
-            <a href="{{ tool.url }}" class="tool-card">
-                <div class="tool-image">
-                    <img src="{{ url_for('static', filename='images/tools/' + tool.image) }}" alt="{{ tool.name }}" onerror="this.parentElement.innerHTML='<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 400 200\' width=\'100%\' height=\'100%\'><rect width=\'400\' height=\'200\' fill=\'#e5e7eb\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-family=\'Arial\' font-size=\'14\' fill=\'#9ca3af\'>Image Placeholder</text></svg>'">
-                </div>
-                <div class="tool-content">
-                    <h3>{{ tool.name }}</h3>
-                    <p>{{ tool.description }}</p>
-                </div>
-            </a>
-            {% endfor %}
-        </div>
-    </section>
+    {% endfor %}
+    {% endfor %}
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const filterBtns = document.querySelectorAll('.filter-btn');
+    const groupBtns = document.querySelectorAll('.group-btn');
+    const subBars = document.querySelectorAll('.sub-filter-bar');
+    const subBtns = document.querySelectorAll('.sub-btn');
     const sections = document.querySelectorAll('.tool-section');
 
-    filterBtns.forEach(btn => {
+    let activeGroup = 'all';
+    let activeCategories = 'all';
+
+    const STORAGE_KEY = 'dashboardFilter';
+    const restoredNote = document.getElementById('filterRestored');
+    const searchInput = document.getElementById('toolSearch');
+    const cards = document.querySelectorAll('.tool-card');
+
+    function hideRestoredNote() {
+        if (restoredNote) restoredNote.hidden = true;
+    }
+
+    function clearSearch() {
+        if (!searchInput.value) return;
+        searchInput.value = '';
+        cards.forEach(c => c.classList.remove('hidden'));
+    }
+
+    function saveFilter() {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                group: activeGroup,
+                categories: activeCategories
+            }));
+        } catch (e) {
+            // localStorage unavailable (private browsing, etc.) - filtering still works
+        }
+    }
+
+    function applyFilter() {
+        sections.forEach(section => {
+            const groupMatch = activeGroup === 'all' || section.dataset.group === activeGroup;
+            const catMatch = activeCategories === 'all' ||
+                activeCategories.split(',').includes(section.dataset.category);
+            section.classList.toggle('hidden', !(groupMatch && catMatch));
+        });
+    }
+
+    groupBtns.forEach(btn => {
         btn.addEventListener('click', function() {
-            const category = this.dataset.category;
+            clearSearch();
+            activeGroup = this.dataset.group;
+            activeCategories = 'all';
 
-            // Update active button
-            filterBtns.forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
+            groupBtns.forEach(b => b.classList.toggle('active', b === this));
 
-            // Filter sections
-            sections.forEach(section => {
-                if (category === 'all' || section.dataset.category === category) {
-                    section.classList.remove('hidden');
-                } else {
-                    section.classList.add('hidden');
-                }
+            // Show only the sub-bar for the active group, reset its selection to All
+            subBars.forEach(bar => {
+                bar.classList.toggle('hidden', bar.dataset.subbar !== activeGroup);
+                bar.querySelectorAll('.sub-btn').forEach(sb =>
+                    sb.classList.toggle('active', sb.dataset.categories === 'all'));
             });
+
+            applyFilter();
+            saveFilter();
+            hideRestoredNote();
         });
     });
+
+    subBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            clearSearch();
+            activeCategories = this.dataset.categories;
+            this.closest('.sub-filter-bar').querySelectorAll('.sub-btn').forEach(b =>
+                b.classList.toggle('active', b === this));
+            applyFilter();
+            saveFilter();
+            hideRestoredNote();
+        });
+    });
+
+    searchInput.addEventListener('input', function() {
+        const q = this.value.trim().toLowerCase();
+        if (!q) {
+            cards.forEach(c => c.classList.remove('hidden'));
+            applyFilter();
+            return;
+        }
+        hideRestoredNote();
+        // Search spans ALL tools, ignoring the group/category filters
+        sections.forEach(section => {
+            let anyMatch = false;
+            section.querySelectorAll('.tool-card').forEach(card => {
+                const match = card.textContent.toLowerCase().includes(q);
+                card.classList.toggle('hidden', !match);
+                if (match) anyMatch = true;
+            });
+            section.classList.toggle('hidden', !anyMatch);
+        });
+    });
+
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            this.value = '';
+            this.dispatchEvent(new Event('input'));
+        }
+    });
+
+    const showAllLink = document.getElementById('showAllLink');
+    if (showAllLink) {
+        showAllLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            const allBtn = Array.from(groupBtns).find(b => b.dataset.group === 'all');
+            if (allBtn) allBtn.click();
+        });
+    }
+
+    // Restore the last-used filter from localStorage
+    (function restoreFilter() {
+        let saved = null;
+        try {
+            saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        } catch (e) {
+            return;
+        }
+        if (!saved || saved.group === 'all') return;
+
+        const groupBtn = Array.from(groupBtns).find(b => b.dataset.group === saved.group);
+        if (!groupBtn) return; // stale value from an older layout - fall back to All
+
+        groupBtn.click();
+
+        if (saved.categories && saved.categories !== 'all') {
+            const bar = document.querySelector('.sub-filter-bar[data-subbar="' + saved.group + '"]');
+            const subBtn = bar && Array.from(bar.querySelectorAll('.sub-btn'))
+                .find(b => b.dataset.categories === saved.categories);
+            if (subBtn) subBtn.click();
+        }
+
+        if (restoredNote) restoredNote.hidden = false;
+    })();
 });
 </script>
 {% endblock %}

@@ -1,10 +1,11 @@
 /**
- * Custom Data Chart - Publication-ready line charts from user-provided data.
- * No API calls: data comes from the pop-out Data Editor (an Excel-like grid,
- * see custom_data_chart_editor.js), a CSV upload, or the example — everything
- * is parsed and rendered in the browser.
+ * Entropic Bar/Line Chart - Publication-ready stacked-bar + line charts from
+ * user-provided data. Cloned from custom_data_chart.js (the line chart engine);
+ * differences: each series has a role — stacked bar (left axis) or line (right
+ * axis) — and the chart renders dual y-axes.
+ * No API calls: data comes from the pop-out Data Editor, a CSV upload, or
+ * paste — everything is parsed and rendered in the browser.
  * First column = x-axis (dates or labels), each other column = one series.
- * Generates charts at 750x400px, exports as 1656x894px WebP.
  */
 
 const CustomDataChart = {
@@ -20,6 +21,8 @@ const CustomDataChart = {
     customSource: null,
     customYMin: null,
     customYMax: null,
+    customYMinRight: null,
+    customYMaxRight: null,
     userTouchedHeaderCheckbox: false,
     userTouchedHideLegend: false,
 
@@ -78,51 +81,7 @@ const CustomDataChart = {
         this.bindEvents();
         this.setupLogToggle();
         this.updateLoadPreviousButton();
-        this.setupCsvTip();
         this.log((this.PAGE_CFG.page_name || 'NGI Line Chart') + ' ready. Click Input/Edit Data or upload a CSV to begin.');
-    },
-
-    // Floating first-visit tip pointing at the Upload CSV button. Closable;
-    // "Don't show this again" persists the opt-out in localStorage.
-    setupCsvTip: function() {
-        const tip = document.getElementById('ngiCsvTip');
-        if (!tip) return;   // page doesn't use the tip
-        try {
-            if (localStorage.getItem('ngiCsvTipHidden') === '1') return;
-        } catch (e) { /* storage unavailable - just show the tip */ }
-        const btn = document.getElementById('uploadCsvBtn');
-        if (!btn) return;
-
-        // Re-parent to <body> so document-based coordinates are exact and the
-        // sidebar's overflow clipping can't cut the callout off.
-        document.body.appendChild(tip);
-        const place = () => {
-            // Anchor past the whole sidebar so the callout never covers the
-            // Load Previous / Clear buttons next to Upload CSV.
-            const r = btn.getBoundingClientRect();
-            const aside = btn.closest('aside');
-            const anchorRight = aside ? Math.max(r.right, aside.getBoundingClientRect().right) : r.right;
-            tip.style.top = (window.scrollY + r.top - 12) + 'px';
-            tip.style.left = (window.scrollX + anchorRight + 18) + 'px';
-        };
-        place();
-        window.addEventListener('resize', place);
-        tip.classList.remove('hidden');
-
-        const hide = () => tip.classList.add('hidden');
-        document.getElementById('csvTipClose').addEventListener('click', hide);
-        document.getElementById('csvTipDontShow').addEventListener('click', () => {
-            try { localStorage.setItem('ngiCsvTipHidden', '1'); } catch (e) {}
-            hide();
-            this.log("CSV tip hidden for good on this browser. (Clear the site's local storage to bring it back.)");
-        });
-        // The tip did its job the moment the user starts using the page:
-        // any button click outside the callout dismisses it.
-        document.addEventListener('click', (e) => {
-            if (tip.classList.contains('hidden')) return;
-            const clickedBtn = e.target.closest('button');
-            if (clickedBtn && !tip.contains(clickedBtn)) hide();
-        }, true);
     },
 
     log: function(msg) {
@@ -203,8 +162,19 @@ const CustomDataChart = {
             });
         });
         document.getElementById('applyYAxisLabelBtn').addEventListener('click', () => this.applyYAxisLabel());
-        document.getElementById('yAxisLabelInput').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') this.applyYAxisLabel();
+        ['yAxisLabelInput', 'yAxisLabelRightInput'].forEach(id => {
+            document.getElementById(id).addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') this.applyYAxisLabel();
+            });
+        });
+        document.getElementById('yAxisLeftDivisor').addEventListener('change', () => this.rerenderChart());
+        document.getElementById('yAxisLeftDecimals').addEventListener('input', () => this.rerenderChart());
+        document.getElementById('applyYAxisRightBtn').addEventListener('click', () => this.applyYAxisRight());
+        document.getElementById('resetYAxisRightBtn').addEventListener('click', () => this.resetYAxisRight());
+        ['yAxisRightMin', 'yAxisRightMax'].forEach(id => {
+            document.getElementById(id).addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') this.applyYAxisRight();
+            });
         });
         document.getElementById('exportColorsBtn').addEventListener('click', () => this.exportColors());
         document.getElementById('importColorsBtn').addEventListener('click', () => document.getElementById('importColorsFile').click());
@@ -860,14 +830,16 @@ const CustomDataChart = {
         }
         section.classList.remove('hidden');
 
-        // Keep existing color/style choices where names still match
+        // Keep existing color/style/role choices where names still match.
+        // Default roles: last series = line (right axis), the rest = stacked bars.
         const old = this.seriesList;
         this.seriesList = p.headers.map((name, idx) => {
             const prev = old.find(s => s.name === name);
             return prev || {
                 name,
                 color: this.colorPalette[idx % this.colorPalette.length],
-                style: this.defaultStyles[idx % this.defaultStyles.length]
+                style: 'solid',
+                role: (p.headers.length > 1 && idx === p.headers.length - 1) ? 'line' : 'bar'
             };
         });
         this.renderSeriesList();
@@ -900,22 +872,40 @@ const CustomDataChart = {
                 this.rerenderChart();
             });
 
-            const styleSelect = document.createElement('select');
-            styleSelect.className = 'px-1 py-0.5 border border-gray-300 text-xs bg-white flex-1';
-            ['solid', 'dashed', 'dotted'].forEach(s => {
+            const roleSelect = document.createElement('select');
+            roleSelect.className = 'px-1 py-0.5 border border-gray-300 text-xs bg-white flex-1';
+            [['bar', 'Stacked Bar (left axis)'], ['line', 'Line (right axis)']].forEach(([val, text]) => {
                 const opt = document.createElement('option');
-                opt.value = s;
-                opt.textContent = s.charAt(0).toUpperCase() + s.slice(1);
-                if (s === item.style) opt.selected = true;
-                styleSelect.appendChild(opt);
+                opt.value = val;
+                opt.textContent = text;
+                if (val === item.role) opt.selected = true;
+                roleSelect.appendChild(opt);
             });
-            styleSelect.addEventListener('change', (e) => {
-                item.style = e.target.value;
+            roleSelect.addEventListener('change', (e) => {
+                item.role = e.target.value;
+                this.renderSeriesList();   // show/hide the line-style dropdown
                 this.rerenderChart();
             });
 
             bottomRow.appendChild(colorInput);
-            bottomRow.appendChild(styleSelect);
+            bottomRow.appendChild(roleSelect);
+
+            if (item.role === 'line') {
+                const styleSelect = document.createElement('select');
+                styleSelect.className = 'px-1 py-0.5 border border-gray-300 text-xs bg-white';
+                ['solid', 'dashed', 'dotted'].forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s;
+                    opt.textContent = s.charAt(0).toUpperCase() + s.slice(1);
+                    if (s === item.style) opt.selected = true;
+                    styleSelect.appendChild(opt);
+                });
+                styleSelect.addEventListener('change', (e) => {
+                    item.style = e.target.value;
+                    this.rerenderChart();
+                });
+                bottomRow.appendChild(styleSelect);
+            }
             div.appendChild(topRow);
             div.appendChild(bottomRow);
             container.appendChild(div);
@@ -1001,10 +991,14 @@ const CustomDataChart = {
         this.customYMax = null;
         document.getElementById('yAxisMin').value = '';
         document.getElementById('yAxisMax').value = '';
+        this.customYMinRight = null;
+        this.customYMaxRight = null;
+        document.getElementById('yAxisRightMin').value = '';
+        document.getElementById('yAxisRightMax').value = '';
         document.getElementById('chartControlsSection').classList.remove('hidden');
         document.getElementById('downloadBtn').classList.remove('hidden');
-        const csvTip = document.getElementById('ngiCsvTip');
-        if (csvTip) csvTip.classList.add('hidden');
+        const csvHelp = document.getElementById('ngiCsvHelp');
+        if (csvHelp) csvHelp.classList.add('hidden');
 
         // One-time note that "Trim start for exact intervals" defaults to on,
         // shown on the X-Axis group header, fading out after a few seconds.
@@ -1290,6 +1284,37 @@ const CustomDataChart = {
         this.log(`Aspect set: <strong>750×${this.PAGE_CFG.chart_height}px</strong> display • exports <strong>${this.PAGE_CFG.export_width}×${this.PAGE_CFG.export_height}px</strong>`);
     },
 
+    getLeftDivisor: function() {
+        const sel = document.getElementById('yAxisLeftDivisor');
+        const v = sel ? parseFloat(sel.value) : 1;
+        return (isNaN(v) || v <= 0) ? 1 : v;
+    },
+
+    getLeftDecimals: function() {
+        let d = parseInt(document.getElementById('yAxisLeftDecimals').value, 10);
+        if (isNaN(d) || d < 0) d = 1;
+        if (d > 6) d = 6;
+        return d;
+    },
+
+    applyYAxisRight: function() {
+        const minRaw = document.getElementById('yAxisRightMin').value.trim();
+        const maxRaw = document.getElementById('yAxisRightMax').value.trim();
+        this.customYMinRight = minRaw === '' ? null : parseFloat(minRaw);
+        this.customYMaxRight = maxRaw === '' ? null : parseFloat(maxRaw);
+        if (this.customYMinRight !== null && isNaN(this.customYMinRight)) this.customYMinRight = null;
+        if (this.customYMaxRight !== null && isNaN(this.customYMaxRight)) this.customYMaxRight = null;
+        this.rerenderChart();
+    },
+
+    resetYAxisRight: function() {
+        this.customYMinRight = null;
+        this.customYMaxRight = null;
+        document.getElementById('yAxisRightMin').value = '';
+        document.getElementById('yAxisRightMax').value = '';
+        this.rerenderChart();
+    },
+
     renderChart: function() {
         if (!this.chartData) return;
 
@@ -1312,7 +1337,8 @@ const CustomDataChart = {
         const compact = hideYear || hideMonth || hideDay; // any simplification = horizontal labels
         const connectGaps = document.getElementById('connectGapsCheckbox').checked;
         const hideLegend = document.getElementById('hideLegendCheckbox').checked;
-        const yAxisLabel = (document.getElementById('yAxisLabelInput').value || '').trim() || '$US/MMBtu';
+        const yAxisLabel = (document.getElementById('yAxisLabelInput').value || '').trim() || 'Million Dekatherm';
+        const yAxisLabelRight = (document.getElementById('yAxisLabelRightInput').value || '').trim() || '$US/MMBtu';
         const yFmt = this.getYFormat();
 
         // Note / Source lines are optional — blank input hides the line, and
@@ -1343,17 +1369,47 @@ const CustomDataChart = {
         for (let i = fromIdx; i <= toIdx; i++) labels.push(this.xDisplayLabel(i, data));
         const dateParts = data.xDates ? data.xDates.slice(fromIdx, toIdx + 1) : null;
 
-        // Build series with per-item colors and styles
+        // Build series with per-item colors, styles and roles. Bars stack on
+        // the left axis; lines draw on the right axis. If the data is bars-only
+        // or lines-only, everything uses the left axis.
+        const roles = data.headers.map((name, idx) => {
+            const item = this.seriesList[idx];
+            return item ? item.role : 'bar';
+        });
+        const hasBars = roles.includes('bar');
+        const hasLines = roles.includes('line');
+        const useRightAxis = hasBars && hasLines;
+        const leftDivisor = this.getLeftDivisor();
+        const leftDecimals = this.getLeftDecimals();
         const series = data.headers.map((name, idx) => {
             const item = this.seriesList[idx];
             const seriesColor = item ? item.color : this.colorPalette[idx % this.colorPalette.length];
-            const lineStyle = item ? item.style : 'solid';
             const displayName = this.customLegendLabels[name] || name;
             const values = [];
-            for (let r = fromIdx; r <= toIdx; r++) values.push(data.rows[r][idx]);
+            for (let r = fromIdx; r <= toIdx; r++) {
+                let v = data.rows[r][idx];
+                // Bar values honor the left-axis Units divisor (e.g. dth -> million dth)
+                if (roles[idx] === 'bar' && v !== null && v !== undefined && !isNaN(v)) v = v / leftDivisor;
+                values.push(v);
+            }
+            if (roles[idx] === 'bar') {
+                return {
+                    name: displayName,
+                    type: 'bar',
+                    stack: 'total',
+                    barCategoryGap: '25%',
+                    yAxisIndex: 0,
+                    data: values,
+                    color: seriesColor,
+                    itemStyle: { color: seriesColor }
+                };
+            }
+            const lineStyle = item ? item.style : 'solid';
             return {
                 name: displayName,
                 type: 'line',
+                yAxisIndex: useRightAxis ? 1 : 0,
+                z: 10,
                 data: values,
                 color: seriesColor,
                 itemStyle: { color: seriesColor },
@@ -1367,19 +1423,76 @@ const CustomDataChart = {
             };
         });
 
-        // Y-axis bounds (use custom overrides if set)
+        // Y-axis bounds. Left axis fits the stacked bar totals (bars start at
+        // 0); the Range override applies to the left axis. The right axis gets
+        // its own nice interval, then its division count is matched to the
+        // left axis so right-axis labels sit exactly on the left gridlines.
         const allValues = series.flatMap(s => s.data).filter(v => v !== null && v !== undefined && !isNaN(v));
         if (allValues.length === 0) {
             this.log('<span class="text-red-400">No values available for the selected x-axis range.</span>');
             return;
         }
-        const dataMin = Math.min(...allValues);
-        const dataMax = Math.max(...allValues);
+        const lineValues = series
+            .filter((s, i) => roles[i] === 'line')
+            .flatMap(s => s.data)
+            .filter(v => v !== null && v !== undefined && !isNaN(v));
+        let leftValues;
+        if (hasBars) {
+            // Stacked totals per x position; positive and negative stacks tracked separately
+            const barSeries = series.filter((s, i) => roles[i] === 'bar');
+            leftValues = [0];
+            const n = toIdx - fromIdx + 1;
+            for (let i = 0; i < n; i++) {
+                let pos = 0, neg = 0, any = false;
+                barSeries.forEach(s => {
+                    const v = s.data[i];
+                    if (v !== null && v !== undefined && !isNaN(v)) {
+                        any = true;
+                        if (v >= 0) pos += v; else neg += v;
+                    }
+                });
+                if (any) { leftValues.push(pos); leftValues.push(neg); }
+            }
+        } else {
+            leftValues = lineValues;
+        }
+        const dataMin = Math.min(...leftValues);
+        const dataMax = Math.max(...leftValues);
         const effectiveMin = this.customYMin !== null ? this.customYMin : dataMin;
         const effectiveMax = this.customYMax !== null ? this.customYMax : dataMax;
         const interval = this.calculateYAxisInterval(effectiveMin, effectiveMax);
         const adjustedMin = Math.floor(effectiveMin / interval) * interval;
         const adjustedMax = Math.ceil(effectiveMax / interval) * interval;
+
+        // Right axis: nice interval, division count forced to match the left
+        // so right-axis labels sit on the left gridlines. A manual right-axis
+        // Range override wins; its interval keeps the same division count.
+        let rAdjustedMin = 0, rAdjustedMax = 1, rInterval = 0.5;
+        if (useRightAxis && lineValues.length) {
+            const leftDivisions = Math.max(1, Math.round((adjustedMax - adjustedMin) / interval));
+            const rMin = Math.min(...lineValues);
+            const rMax = Math.max(...lineValues);
+            rInterval = this.calculateYAxisInterval(rMin, rMax);
+            const niceUp = (v) => {
+                const exp = Math.floor(Math.log10(v));
+                const base = v / Math.pow(10, exp);
+                const next = base < 1.5 ? 2 : base < 3 ? 5 : 10;
+                return next * Math.pow(10, exp);
+            };
+            let guard = 0;
+            while (rInterval > 0 && guard++ < 20
+                && Math.ceil((rMax - Math.floor(rMin / rInterval) * rInterval) / rInterval) > leftDivisions) {
+                rInterval = niceUp(rInterval);
+            }
+            rAdjustedMin = Math.floor(rMin / rInterval) * rInterval;
+            rAdjustedMax = rAdjustedMin + leftDivisions * rInterval;
+
+            if (this.customYMinRight !== null || this.customYMaxRight !== null) {
+                if (this.customYMinRight !== null) rAdjustedMin = this.customYMinRight;
+                if (this.customYMaxRight !== null) rAdjustedMax = this.customYMaxRight;
+                rInterval = (rAdjustedMax - rAdjustedMin) / leftDivisions;
+            }
+        }
 
         // Layout offsets adjust for one-line vs two-line title
         const dividerTop = isTwoLine ? 73 : 63;
@@ -1394,6 +1507,9 @@ const CustomDataChart = {
 
         const legendData = series.map((s, idx) => {
             const item = this.seriesList[idx];
+            if (roles[idx] === 'bar') {
+                return { name: s.name, icon: 'rect', itemStyle: { color: s.color } };
+            }
             const lineStyle = item ? item.style : 'solid';
             return {
                 name: s.name,
@@ -1445,7 +1561,14 @@ const CustomDataChart = {
         const rotateLabels = (showYearUnderJan || (data.xKind === 'monthly' && compact)) ? 0 : 45;
         const horizontal = rotateLabels === 0;
 
-        const yTickFormatter = function(value) {
+        // Left axis (bars): plain numbers with the left decimals setting.
+        // Right axis (line): uses the Number format controls (prefix + decimals).
+        const leftTickFormatter = function(value) {
+            const text = value.toFixed(leftDecimals);
+            if (value < 0) return `{red|${text}}`;
+            return text;
+        };
+        const rightTickFormatter = function(value) {
             const text = yFmt.prefix + value.toFixed(yFmt.decimals);
             if (value < 0) return `{red|${text}}`;
             return text;
@@ -1488,6 +1611,17 @@ const CustomDataChart = {
                 rotation: Math.PI / 2,
                 style: {
                     text: yAxisLabel,
+                    font: 'bold 12px Arial',
+                    fill: '#000'
+                }
+            },
+            {
+                type: 'text',
+                right: '3%',
+                top: 'middle',
+                rotation: -Math.PI / 2,
+                style: {
+                    text: useRightAxis ? yAxisLabelRight : '',
                     font: 'bold 12px Arial',
                     fill: '#000'
                 }
@@ -1558,7 +1692,10 @@ const CustomDataChart = {
                     let html = `<strong>${params[0].axisValueLabel}</strong>`;
                     params.forEach(p => {
                         if (p.value !== null && p.value !== undefined) {
-                            html += `<br/><span style="display:inline-block;width:10px;height:10px;background:${p.color};margin-right:5px;border-radius:50%;"></span>${p.seriesName}: ${yFmt.prefix}${p.value.toFixed(yFmt.decimals)}`;
+                            const valText = roles[p.seriesIndex] === 'bar'
+                                ? p.value.toFixed(leftDecimals)
+                                : yFmt.prefix + p.value.toFixed(yFmt.decimals);
+                            html += `<br/><span style="display:inline-block;width:10px;height:10px;background:${p.color};margin-right:5px;border-radius:50%;"></span>${p.seriesName}: ${valText}`;
                         }
                     });
                     return html;
@@ -1566,7 +1703,7 @@ const CustomDataChart = {
             },
             grid: {
                 left: '5.5%',
-                right: '4%',
+                right: '5.5%',
                 top: gridTop,
                 bottom: Math.max(0,
                     (footerLines === 2 ? (horizontal ? 9 : 11)
@@ -1577,7 +1714,7 @@ const CustomDataChart = {
             },
             xAxis: {
                 type: 'category',
-                boundaryGap: false,
+                boundaryGap: true,   // bars need a band per category
                 data: labels,
                 axisLabel: {
                     show: !(isDates && hideYear && hideMonth
@@ -1602,35 +1739,62 @@ const CustomDataChart = {
                     lineStyle: { color: '#D3D3D3' }
                 }
             },
-            yAxis: {
-                type: 'value',
-                min: adjustedMin,
-                max: adjustedMax,
-                interval: interval,
-                axisLabel: {
-                    formatter: yTickFormatter,
-                    fontSize: 14,
-                    fontWeight: 510,
-                    color: 'black',
-                    rich: {
-                        red: {
-                            color: 'red',
-                            fontSize: 14,
-                            fontWeight: 510
+            yAxis: [
+                {
+                    type: 'value',
+                    min: adjustedMin,
+                    max: adjustedMax,
+                    interval: interval,
+                    axisLabel: {
+                        formatter: leftTickFormatter,
+                        fontSize: 14,
+                        fontWeight: 510,
+                        color: 'black',
+                        rich: {
+                            red: {
+                                color: 'red',
+                                fontSize: 14,
+                                fontWeight: 510
+                            }
+                        }
+                    },
+                    axisLine: {
+                        lineStyle: { color: '#D3D3D3' }
+                    },
+                    axisTick: { show: false },
+                    splitLine: {
+                        lineStyle: {
+                            color: '#D3D3D3',
+                            width: 1
                         }
                     }
                 },
-                axisLine: {
-                    lineStyle: { color: '#D3D3D3' }
-                },
-                axisTick: { show: false },
-                splitLine: {
-                    lineStyle: {
-                        color: '#D3D3D3',
-                        width: 1
-                    }
+                {
+                    type: 'value',
+                    show: useRightAxis,
+                    min: rAdjustedMin,
+                    max: rAdjustedMax,
+                    interval: rInterval,
+                    axisLabel: {
+                        formatter: rightTickFormatter,
+                        fontSize: 14,
+                        fontWeight: 510,
+                        color: 'black',
+                        rich: {
+                            red: {
+                                color: 'red',
+                                fontSize: 14,
+                                fontWeight: 510
+                            }
+                        }
+                    },
+                    axisLine: {
+                        lineStyle: { color: '#D3D3D3' }
+                    },
+                    axisTick: { show: false },
+                    splitLine: { show: false }   // left axis owns the gridlines
                 }
-            },
+            ],
             series: series
         };
 
@@ -1813,15 +1977,15 @@ const CustomDataChart = {
     },
 
     calculateYAxisInterval: function(min, max) {
-        const range = max - min;
-        if (range > 100) return 20;
-        if (range > 50) return 10;
-        if (range > 20) return 5;
-        if (range > 8) return 2;
-        if (range > 4) return 1;
-        if (range > 2) return 0.5;
-        if (range > 0.8) return 0.25;
-        return 0.1;
+        // Scale-invariant nice interval aiming for ~6 divisions. The line
+        // tools use a fixed price ladder; this tool also charts volumes in
+        // the millions, so the interval must scale with the data magnitude.
+        const range = Math.max(max - min, 1e-9);
+        const target = range / 6;
+        const exp = Math.floor(Math.log10(target));
+        const base = target / Math.pow(10, exp);
+        const nice = base <= 1 ? 1 : base <= 2 ? 2 : base <= 2.5 ? 2.5 : base <= 5 ? 5 : 10;
+        return nice * Math.pow(10, exp);
     },
 
     setupLegendEditor: function() {

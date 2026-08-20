@@ -193,25 +193,20 @@
                     <div id="chart"></div>
                 </div>
                 {% if line_chart_config.show_ngi_tip %}
-                <!-- Floating CSV-source tip, anchored to the Upload CSV button by
-                     setupCsvTip(). Dismissable; "Don't show again" persists in
-                     localStorage ('ngiCsvTipHidden'). -->
-                <div id="ngiCsvTip" class="hidden absolute z-50 w-80 bg-white border border-brand-100 shadow-lg p-4 text-sm">
-                    <div class="absolute -left-2 top-5 w-4 h-4 bg-white border-l border-b border-brand-100 rotate-45"></div>
-                    <div class="flex items-start justify-between mb-2">
-                        <div class="text-gray-700"><span class="mr-1.5">&#128161;</span><span class="font-semibold text-brand-700">Tip:</span> You can also use a CSV from NGI's historical data pages:</div>
-                        <button id="csvTipClose" class="ml-2 text-gray-400 hover:text-gray-600 leading-none text-base" title="Close">&times;</button>
+                <!-- CSV source help: shown until the first chart is generated -->
+                <div id="ngiCsvHelp" class="mt-3">
+                    <div class="w-[782px] max-w-full mx-auto border border-brand-100 bg-brand-50 p-4">
+                        <div class="text-sm text-gray-700 mb-2"><span class="mr-1.5">&#128161;</span><span class="font-semibold text-brand-700">Tip:</span> You can also use a CSV from NGI's historical data pages:</div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 text-sm">
+                            <a href="https://www.naturalgasintel.com/premium/daily-historical-data/" target="_blank" rel="noopener" class="text-brand-600 hover:underline">Daily Spot Prices &#8599;</a>
+                            <a href="https://www.naturalgasintel.com/premium/midday-historical-data/" target="_blank" rel="noopener" class="text-brand-600 hover:underline">Midday Spot Prices &#8599;</a>
+                            <a href="https://www.naturalgasintel.com/premium/weekly-historical-data/" target="_blank" rel="noopener" class="text-brand-600 hover:underline">Weekly Spot Prices &#8599;</a>
+                            <a href="https://www.naturalgasintel.com/premium/forward-historical-data-basis-prices/" target="_blank" rel="noopener" class="text-brand-600 hover:underline">Forward Look Basis &#8599;</a>
+                            <a href="https://www.naturalgasintel.com/premium/forward-historical-data-fixed-prices/" target="_blank" rel="noopener" class="text-brand-600 hover:underline">Forward Look Fixed &#8599;</a>
+                            <a href="https://www.naturalgasintel.com/premium/bidweek-historical-data/" target="_blank" rel="noopener" class="text-brand-600 hover:underline">Monthly Bidweek Fixed &#8599;</a>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-3">Download a CSV from any of these pages, then click <span class="font-medium">Upload CSV&hellip;</span> on the left.</div>
                     </div>
-                    <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm mb-3">
-                        <a href="https://www.naturalgasintel.com/premium/daily-historical-data/" target="_blank" rel="noopener" class="text-brand-600 hover:underline">Daily Spot Prices &#8599;</a>
-                        <a href="https://www.naturalgasintel.com/premium/midday-historical-data/" target="_blank" rel="noopener" class="text-brand-600 hover:underline">Midday Spot Prices &#8599;</a>
-                        <a href="https://www.naturalgasintel.com/premium/weekly-historical-data/" target="_blank" rel="noopener" class="text-brand-600 hover:underline">Weekly Spot Prices &#8599;</a>
-                        <a href="https://www.naturalgasintel.com/premium/forward-historical-data-basis-prices/" target="_blank" rel="noopener" class="text-brand-600 hover:underline">Forward Look Basis &#8599;</a>
-                        <a href="https://www.naturalgasintel.com/premium/forward-historical-data-fixed-prices/" target="_blank" rel="noopener" class="text-brand-600 hover:underline">Forward Look Fixed &#8599;</a>
-                        <a href="https://www.naturalgasintel.com/premium/bidweek-historical-data/" target="_blank" rel="noopener" class="text-brand-600 hover:underline">Monthly Bidweek Fixed &#8599;</a>
-                    </div>
-                    <div class="text-xs text-gray-500 mb-3">Or click <span class="font-medium">Load Previous</span> to bring back your last dataset and settings.</div>
-                    <button id="csvTipDontShow" class="text-xs text-gray-400 hover:text-gray-600 underline">Don't show this again</button>
                 </div>
                 {% endif %}
                 <!-- Chart editing controls (below chart), grouped in collapsible sections -->
@@ -351,18 +346,28 @@
 
                         <!-- ═══ Y-Axis ═══ -->
                         <details class="control-group">
-                            <summary>Y-Axis<span class="summary-hint">label, range, number format</span></summary>
+                            <summary>Y-Axis<span class="summary-hint">left = bars, right = line: labels, units, ranges</span></summary>
                             <div class="p-3 grid grid-cols-2 gap-6">
-                                <div>
-                                    <span class="field-label block mb-1">Axis label</span>
-                                    <div class="flex flex-col gap-1">
-                                        <input id="yAxisLabelInput" type="text" value="$US/MMBtu" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-48">
-                                        <button id="applyYAxisLabelBtn" class="btn-apply mt-0.5">Apply</button>
-                                    </div>
-                                </div>
                                 <div class="space-y-3">
+                                    <span class="field-label block border-b border-gray-200 pb-1">Left axis (bars)</span>
                                     <div>
-                                        <span class="field-label block mb-1">Range</span>
+                                        <span class="field-label block mb-1 font-normal">Label</span>
+                                        <input id="yAxisLabelInput" type="text" value="Million Dekatherm" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-48">
+                                    </div>
+                                    <div>
+                                        <span class="field-label block mb-1 font-normal">Units</span>
+                                        <div class="flex items-center gap-2">
+                                            <select id="yAxisLeftDivisor" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white" title="Divide bar values for display, e.g. dekatherms shown as millions">
+                                                <option value="1">as-is</option>
+                                                <option value="1000">thousands (&divide;1,000)</option>
+                                                <option value="1000000" selected>millions (&divide;1,000,000)</option>
+                                            </select>
+                                            <input type="number" id="yAxisLeftDecimals" value="1" min="0" max="6" step="1" class="w-12 px-1.5 py-0.5 border border-gray-300 text-xs bg-white" title="Decimal places on left-axis values">
+                                            <span>decimals</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span class="field-label block mb-1 font-normal">Range</span>
                                         <div class="flex items-center gap-2">
                                             <input type="number" id="yAxisMin" step="0.5" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-20" placeholder="Min">
                                             <span>to</span>
@@ -371,13 +376,33 @@
                                             <button id="resetYAxisBtn" class="btn-apply">Reset</button>
                                         </div>
                                     </div>
+                                </div>
+                                <div class="space-y-3">
+                                    <span class="field-label block border-b border-gray-200 pb-1">Right axis (line)</span>
                                     <div>
-                                        <span class="field-label block mb-1">Number format</span>
+                                        <span class="field-label block mb-1 font-normal">Label</span>
                                         <div class="flex items-center gap-2">
-                                            <input type="text" id="yAxisPrefix" value="$" class="w-10 px-1.5 py-0.5 border border-gray-300 text-xs bg-white" title="Prefix shown before each y-axis value (e.g. $). Leave blank for none.">
+                                            <input id="yAxisLabelRightInput" type="text" value="$US/MMBtu" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-48">
+                                            <button id="applyYAxisLabelBtn" class="btn-apply" title="Apply both axis labels">Apply</button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span class="field-label block mb-1 font-normal">Number format</span>
+                                        <div class="flex items-center gap-2">
+                                            <input type="text" id="yAxisPrefix" value="$" class="w-10 px-1.5 py-0.5 border border-gray-300 text-xs bg-white" title="Prefix shown before each right-axis value (e.g. $). Leave blank for none.">
                                             <span>prefix,</span>
-                                            <input type="number" id="yAxisDecimals" value="3" min="0" max="6" step="1" class="w-12 px-1.5 py-0.5 border border-gray-300 text-xs bg-white" title="Decimal places on y-axis values">
+                                            <input type="number" id="yAxisDecimals" value="3" min="0" max="6" step="1" class="w-12 px-1.5 py-0.5 border border-gray-300 text-xs bg-white" title="Decimal places on right-axis values">
                                             <span>decimals</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span class="field-label block mb-1 font-normal">Range</span>
+                                        <div class="flex items-center gap-2">
+                                            <input type="number" id="yAxisRightMin" step="0.25" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-20" placeholder="Min">
+                                            <span>to</span>
+                                            <input type="number" id="yAxisRightMax" step="0.25" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-20" placeholder="Max">
+                                            <button id="applyYAxisRightBtn" class="btn-apply">Apply</button>
+                                            <button id="resetYAxisRightBtn" class="btn-apply">Reset</button>
                                         </div>
                                     </div>
                                 </div>
@@ -413,5 +438,5 @@
        chart tools; the route passes the config (name, logo, storage key). */
     window.LINE_CHART_CONFIG = {{ line_chart_config|tojson }};
 </script>
-<script src="{{ url_for('static', filename='js/custom_data_chart.js') }}"></script>
+<script src="{{ url_for('static', filename='js/entropic_bar_line_chart.js') }}"></script>
 {% endblock %}

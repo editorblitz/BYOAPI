@@ -41,6 +41,10 @@ app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') == 'production
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # No JavaScript access
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
 
+# Re-read templates from disk when they change (Jinja otherwise caches them until restart
+# when debug is off, so an edited template can lag behind freshly served static JS)
+app.config['TEMPLATES_AUTO_RELOAD'] = True
+
 # Initialize extensions
 Session(app)
 csrf = CSRFProtect(app)

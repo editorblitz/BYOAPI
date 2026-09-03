@@ -180,6 +180,7 @@ const CustomDataChart = {
             } else {
                 document.getElementById('yAxisPrefix').value = '$';
                 document.getElementById('yAxisDecimals').value = '3';
+                document.getElementById('yAxisDivisor').value = '1';
             }
             this.handleInputChanged(true);
             this.log(`NGI export: now charting <strong>${e.target.selectedOptions[0].textContent}</strong>. Click Generate Chart to apply.`);
@@ -218,12 +219,14 @@ const CustomDataChart = {
                 if (e.key === 'Enter') this.applyYAxis();
             });
         });
-        document.getElementById('hideYearCheckbox').addEventListener('change', (e) => {
-            ['showYearUnderJanCheckbox', 'showYearUnderJanuaryCheckbox'].forEach(id => {
-                const sub = document.getElementById(id);
-                sub.disabled = !e.target.checked;
-                if (!e.target.checked) sub.checked = false;
-            });
+        document.getElementById('hideYearCheckbox').addEventListener('change', () => {
+            this.syncMonthOnlyControls();
+            this.rerenderChart();
+        });
+        // Month-only mode: labels/ticks at the 1st of each month, month name
+        // only, level. It overrides the Label interval select, so grey it out.
+        document.getElementById('monthOnlyCheckbox').addEventListener('change', () => {
+            this.syncMonthOnlyControls();
             this.rerenderChart();
         });
         // "Under first month of year" and "under January" are either/or
@@ -269,6 +272,7 @@ const CustomDataChart = {
         });
         document.getElementById('yAxisPrefix').addEventListener('input', () => this.rerenderChart());
         document.getElementById('yAxisDecimals').addEventListener('input', () => this.rerenderChart());
+        document.getElementById('yAxisDivisor').addEventListener('change', () => this.rerenderChart());
 
         // Two-line title checkbox toggles second input
         document.getElementById('twoLineTitleCheckbox').addEventListener('change', (e) => {
@@ -352,6 +356,21 @@ const CustomDataChart = {
         };
         reader.readAsText(file);
         e.target.value = '';
+    },
+
+    // Enable/disable the x-axis controls that depend on "Hide year" and
+    // "Month only": the year-under sub-options need the year hidden (either
+    // way), and the Label interval select is overridden by month-only mode.
+    syncMonthOnlyControls: function() {
+        const hideYear = document.getElementById('hideYearCheckbox');
+        const monthOnly = document.getElementById('monthOnlyCheckbox');
+        const yearHidden = (hideYear.checked && !hideYear.disabled) || (monthOnly.checked && !monthOnly.disabled);
+        ['showYearUnderJanCheckbox', 'showYearUnderJanuaryCheckbox'].forEach(id => {
+            const sub = document.getElementById(id);
+            sub.disabled = !yearHidden;
+            if (!yearHidden) sub.checked = false;
+        });
+        document.getElementById('xAxisLabelMode').disabled = monthOnly.checked && !monthOnly.disabled;
     },
 
     handleInputChanged: function(keepHeaderChoice) {
@@ -861,16 +880,52 @@ const CustomDataChart = {
         section.classList.remove('hidden');
 
         // Keep existing color/style choices where names still match
-        const old = this.seriesList;
-        this.seriesList = p.headers.map((name, idx) => {
-            const prev = old.find(s => s.name === name);
-            return prev || {
+        this.seriesList = this.mergeSeriesList(p.headers, this.seriesList);
+        this.renderSeriesList();
+    },
+
+    // Build the series list for `headers`, carrying over color/style from
+    // `prevList` where the name matches (each previous entry used at most
+    // once, so two columns with the same header don't share one object).
+    // New columns take the first palette color not already used by a
+    // carried-over series — a plain `palette[idx]` collides whenever a
+    // retained series had that slot in the previous dataset (e.g. paste a
+    // new column in front of an existing one and both came out navy).
+    mergeSeriesList: function(headers, prevList) {
+        const prev = Array.isArray(prevList) ? prevList : [];
+        const taken = new Set();
+        // Pass 1: same name at the same position (so fixing one duplicate
+        // header leaves the other column's color where it was). Pass 2: any
+        // remaining name match.
+        const kept = headers.map((name, idx) => {
+            const same = prev[idx];
+            if (same && same.name === name && !taken.has(same)) { taken.add(same); return same; }
+            return null;
+        });
+        headers.forEach((name, idx) => {
+            if (kept[idx]) return;
+            const match = prev.find(s => s && s.name === name && !taken.has(s));
+            if (match) { taken.add(match); kept[idx] = match; }
+        });
+        const usedColors = new Set(kept.filter(k => k && k.color).map(k => String(k.color).toLowerCase()));
+        return headers.map((name, idx) => {
+            if (kept[idx] && kept[idx].color) {
+                if (!kept[idx].style) kept[idx].style = this.defaultStyles[idx % this.defaultStyles.length];
+                return kept[idx];
+            }
+            let color = null;
+            for (let k = 0; k < this.colorPalette.length; k++) {
+                const c = this.colorPalette[(idx + k) % this.colorPalette.length];
+                if (!usedColors.has(c.toLowerCase())) { color = c; break; }
+            }
+            if (!color) color = this.colorPalette[idx % this.colorPalette.length]; // palette exhausted
+            usedColors.add(color.toLowerCase());
+            return {
                 name,
-                color: this.colorPalette[idx % this.colorPalette.length],
+                color,
                 style: this.defaultStyles[idx % this.defaultStyles.length]
             };
         });
-        this.renderSeriesList();
     },
 
     renderSeriesList: function() {
@@ -968,11 +1023,10 @@ const CustomDataChart = {
         const hideDayEl = document.getElementById('hideDayCheckbox');
         hideDayEl.disabled = this.chartData.xKind !== 'daily';
         if (hideDayEl.disabled) hideDayEl.checked = false;
-        ['showYearUnderJanCheckbox', 'showYearUnderJanuaryCheckbox'].forEach(id => {
-            const subEl = document.getElementById(id);
-            if (!isDates) { subEl.checked = false; subEl.disabled = true; }
-            else subEl.disabled = !document.getElementById('hideYearCheckbox').checked;
-        });
+        const monthOnlyEl = document.getElementById('monthOnlyCheckbox');
+        monthOnlyEl.disabled = !isDates;
+        if (!isDates) monthOnlyEl.checked = false;
+        this.syncMonthOnlyControls();
 
         // Date-based interval modes only apply when the x-axis is dates;
         // weekly/monthly need day-level dates
@@ -1033,12 +1087,12 @@ const CustomDataChart = {
     // Control ids captured into the saved-settings snapshot. Ids that don't
     // exist on a given page are skipped, so the list is shared across tools.
     SETTING_CONTROL_IDS: [
-        'hideYearCheckbox', 'hideMonthCheckbox', 'hideDayCheckbox',
+        'hideYearCheckbox', 'hideMonthCheckbox', 'hideDayCheckbox', 'monthOnlyCheckbox',
         'showYearUnderJanCheckbox', 'showYearUnderJanuaryCheckbox',
         'connectGapsCheckbox', 'hideLegendCheckbox', 'trimForIntervalCheckbox',
         'xAxisLabelMode', 'xAxisPadding', 'legendPadding',
         'xRangeFrom', 'xRangeTo',
-        'yAxisLabelInput', 'yAxisPrefix', 'yAxisDecimals',
+        'yAxisLabelInput', 'yAxisPrefix', 'yAxisDecimals', 'yAxisDivisor',
         'yAxisLabelRightInput', 'yAxisLeftDivisor', 'yAxisLeftDecimals',
         'aspectRatioSelect'
     ],
@@ -1069,10 +1123,11 @@ const CustomDataChart = {
         if (!s) return;
         if (Array.isArray(s.seriesList)) {
             // Merge by series name so renamed/added columns keep sane defaults
-            this.seriesList = this.seriesList.map(item => {
-                const prev = s.seriesList.find(p => p.name === item.name);
-                return prev ? Object.assign({}, item, prev) : item;
-            });
+            // (and unmatched columns avoid colors the saved ones already use)
+            const saved = s.seriesList
+                .filter(p => p && typeof p.name === 'string')
+                .map(p => Object.assign({}, p));
+            this.seriesList = this.mergeSeriesList(this.seriesList.map(i => i.name), saved);
             this.renderSeriesList();
         }
         this.customTitle = s.customTitle || null;
@@ -1270,7 +1325,25 @@ const CustomDataChart = {
         let decimals = parseInt(document.getElementById('yAxisDecimals').value, 10);
         if (isNaN(decimals) || decimals < 0) decimals = 3;
         if (decimals > 6) decimals = 6;
-        return { prefix, decimals };
+        return { prefix, decimals, divisor: this.getYDivisor() };
+    },
+
+    // Units divisor: raw values are divided by this for display (e.g. Dth
+    // charted as thousands or millions). Applies to the plotted values, the
+    // tick labels, the tooltip and the manual Range bounds.
+    getYDivisor: function() {
+        const sel = document.getElementById('yAxisDivisor');
+        const v = sel ? parseFloat(sel.value) : 1;
+        return (isNaN(v) || v <= 0) ? 1 : v;
+    },
+
+    // Prefix + fixed decimals + thousands separators (500,000 not 500000).
+    formatYValue: function(value, yFmt) {
+        const fixed = Math.abs(value).toFixed(yFmt.decimals);
+        const parts = fixed.split('.');
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        // Sign after the prefix ($-0.500) matches the other chart generators.
+        return yFmt.prefix + (value < 0 ? '-' : '') + parts.join('.');
     },
 
     // Aspect toggle (Entropic pages): swaps display height + export size,
@@ -1302,11 +1375,14 @@ const CustomDataChart = {
         const hideYear = isDates && document.getElementById('hideYearCheckbox').checked;
         const hideMonth = isDates && document.getElementById('hideMonthCheckbox').checked;
         const hideDay = data.xKind === 'daily' && document.getElementById('hideDayCheckbox').checked;
+        // Month-only mode: month name at the first date of each month, level
+        const monthOnly = isDates && document.getElementById('monthOnlyCheckbox').checked;
         // Year-under-label mode: 'first' = first visible label of each year,
         // 'january' = only under January labels, null = off. Either/or.
+        const yearHidden = hideYear || monthOnly;
         const showYearUnder =
-            (hideYear && document.getElementById('showYearUnderJanCheckbox').checked) ? 'first'
-            : (hideYear && document.getElementById('showYearUnderJanuaryCheckbox').checked) ? 'january'
+            (yearHidden && document.getElementById('showYearUnderJanCheckbox').checked) ? 'first'
+            : (yearHidden && document.getElementById('showYearUnderJanuaryCheckbox').checked) ? 'january'
             : null;
         const showYearUnderJan = showYearUnder !== null;
         const compact = hideYear || hideMonth || hideDay; // any simplification = horizontal labels
@@ -1325,10 +1401,11 @@ const CustomDataChart = {
         const isTwoLine = titleText.includes('\n');
 
         let { fromIdx, toIdx } = this.getXRange();
-        const labelMode = document.getElementById('xAxisLabelMode').value;
+        const labelMode = monthOnly ? 'monthStart' : document.getElementById('xAxisLabelMode').value;
         const exactIntervals = document.getElementById('trimForIntervalCheckbox').checked;
         if (exactIntervals) {
-            const newFrom = this.trimStartForExactIntervals(fromIdx, toIdx, labelMode, data);
+            // month-only trims to the first month boundary like the Monthly interval
+            const newFrom = this.trimStartForExactIntervals(fromIdx, toIdx, monthOnly ? 'monthly' : labelMode, data);
             const trimmed = newFrom - fromIdx;
             const msg = trimmed > 0
                 ? `Trimmed ${trimmed} point(s) from the start (now begins ${this.xDisplayLabel(newFrom, data)}) for exact label intervals.`
@@ -1350,7 +1427,11 @@ const CustomDataChart = {
             const lineStyle = item ? item.style : 'solid';
             const displayName = this.customLegendLabels[name] || name;
             const values = [];
-            for (let r = fromIdx; r <= toIdx; r++) values.push(data.rows[r][idx]);
+            for (let r = fromIdx; r <= toIdx; r++) {
+                let v = data.rows[r][idx];
+                if (v !== null && v !== undefined && !isNaN(v)) v = v / yFmt.divisor;
+                values.push(v);
+            }
             return {
                 name: displayName,
                 type: 'line',
@@ -1378,8 +1459,10 @@ const CustomDataChart = {
         const effectiveMin = this.customYMin !== null ? this.customYMin : dataMin;
         const effectiveMax = this.customYMax !== null ? this.customYMax : dataMax;
         const interval = this.calculateYAxisInterval(effectiveMin, effectiveMax);
-        const adjustedMin = Math.floor(effectiveMin / interval) * interval;
-        const adjustedMax = Math.ceil(effectiveMax / interval) * interval;
+        // Honor user-entered bounds exactly (e.g. -0.10 to 0.15); only snap
+        // auto-derived bounds outward to a clean tick.
+        const adjustedMin = this.customYMin !== null ? effectiveMin : Math.floor(effectiveMin / interval) * interval;
+        const adjustedMax = this.customYMax !== null ? effectiveMax : Math.ceil(effectiveMax / interval) * interval;
 
         // Layout offsets adjust for one-line vs two-line title
         const dividerTop = isTwoLine ? 73 : 63;
@@ -1408,6 +1491,7 @@ const CustomDataChart = {
         const formatXLabel = function(idxInRange) {
             if (!dateParts) return labels[idxInRange];
             const dt = dateParts[idxInRange];
+            if (monthOnly) return monthsRef[dt.month - 1];
             const parts = [];
             if (data.xKind === 'daily' && !hideDay) parts.push(String(dt.day));
             if (!hideMonth) parts.push(monthsRef[dt.month - 1]);
@@ -1442,11 +1526,12 @@ const CustomDataChart = {
         // forward charts): always level when stacking the year under labels,
         // and for monthly axes once any part is hidden. Full daily dates and
         // categories rotate 45.
-        const rotateLabels = (showYearUnderJan || (data.xKind === 'monthly' && compact)) ? 0 : 45;
+        const rotateLabels = (monthOnly || showYearUnderJan || (data.xKind === 'monthly' && compact)) ? 0 : 45;
         const horizontal = rotateLabels === 0;
 
+        const self = this;
         const yTickFormatter = function(value) {
-            const text = yFmt.prefix + value.toFixed(yFmt.decimals);
+            const text = self.formatYValue(value, yFmt);
             if (value < 0) return `{red|${text}}`;
             return text;
         };
@@ -1558,7 +1643,7 @@ const CustomDataChart = {
                     let html = `<strong>${params[0].axisValueLabel}</strong>`;
                     params.forEach(p => {
                         if (p.value !== null && p.value !== undefined) {
-                            html += `<br/><span style="display:inline-block;width:10px;height:10px;background:${p.color};margin-right:5px;border-radius:50%;"></span>${p.seriesName}: ${yFmt.prefix}${p.value.toFixed(yFmt.decimals)}`;
+                            html += `<br/><span style="display:inline-block;width:10px;height:10px;background:${p.color};margin-right:5px;border-radius:50%;"></span>${p.seriesName}: ${self.formatYValue(p.value, yFmt)}`;
                         }
                     });
                     return html;
@@ -1580,7 +1665,7 @@ const CustomDataChart = {
                 boundaryGap: false,
                 data: labels,
                 axisLabel: {
-                    show: !(isDates && hideYear && hideMonth
+                    show: monthOnly || !(isDates && hideYear && hideMonth
                         && (data.xKind !== 'daily' || hideDay) && !showYearUnderJan),
                     rotate: rotateLabels,
                     interval: labelInterval,
@@ -1728,6 +1813,26 @@ const CustomDataChart = {
             return all;
         }
 
+        if (mode === 'monthStart' && dateParts) {
+            // Month-only mode: first data point of each calendar month, no
+            // first/last pinning. When that's more labels than fit level on a
+            // 750px chart, keep every k-th month (k divides 12 so January
+            // stays a label year after year).
+            const MAX_LABELS = 13;
+            const starts = [];
+            let prevKey = null;
+            dateParts.forEach((d, i) => {
+                const key = d.year * 100 + d.month;
+                if (key !== prevKey) { starts.push({ i, month: d.month, day: d.day }); prevKey = key; }
+            });
+            // A range that starts mid-month (trim off) gets no label for that
+            // partial month — the tick would sit on the wrong date. Day <= 7
+            // still counts as a month start (weekends/holidays on the 1st).
+            if (starts.length > 1 && starts[0].day > 7) starts.shift();
+            const k = [1, 2, 3, 4, 6, 12].find(step => Math.ceil(starts.length / step) <= MAX_LABELS) || 12;
+            return new Set(starts.filter(s => (s.month - 1) % k === 0).map(s => s.i));
+        }
+
         if (mode === 'short') {
             // Uniform integer step — avoids Math.round clustering on short ranges
             const TARGET = 12;
@@ -1814,6 +1919,16 @@ const CustomDataChart = {
 
     calculateYAxisInterval: function(min, max) {
         const range = max - min;
+        // Above the price ladder (volumes in the thousands/millions), pick a
+        // scale-invariant nice step aiming for ~6 divisions so the axis never
+        // ends up with hundreds of ticks (ECharts then hides every label).
+        if (range > 120) {
+            const target = range / 6;
+            const exp = Math.floor(Math.log10(target));
+            const base = target / Math.pow(10, exp);
+            const nice = base <= 1 ? 1 : base <= 2 ? 2 : base <= 2.5 ? 2.5 : base <= 5 ? 5 : 10;
+            return nice * Math.pow(10, exp);
+        }
         if (range > 100) return 20;
         if (range > 50) return 10;
         if (range > 20) return 5;
@@ -1821,7 +1936,10 @@ const CustomDataChart = {
         if (range > 4) return 1;
         if (range > 2) return 0.5;
         if (range > 0.8) return 0.25;
-        return 0.1;
+        if (range > 0.4) return 0.1;
+        if (range > 0.2) return 0.05;
+        if (range > 0.08) return 0.02;
+        return 0.01;
     },
 
     setupLegendEditor: function() {

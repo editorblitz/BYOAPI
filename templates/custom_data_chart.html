@@ -344,6 +344,10 @@
                                             <input type="checkbox" id="hideDayCheckbox" class="w-3.5 h-3.5">
                                             <span>Hide day</span>
                                         </label>
+                                        <label class="flex items-center gap-1.5 cursor-pointer mt-1 pt-1 border-t border-gray-200" title="Label and tick at the first date of each month, month name only, level text. Overrides Label interval and the hide options above. Long ranges thin to every 2nd/3rd/4th/6th/12th month.">
+                                            <input type="checkbox" id="monthOnlyCheckbox" class="w-3.5 h-3.5">
+                                            <span>Month only, level (tick at 1st of month)</span>
+                                        </label>
                                     </div>
                                 </div>
                             </div>
@@ -351,7 +355,7 @@
 
                         <!-- ═══ Y-Axis ═══ -->
                         <details class="control-group">
-                            <summary>Y-Axis<span class="summary-hint">label, range, number format</span></summary>
+                            <summary>Y-Axis<span class="summary-hint">label, units, range, number format</span></summary>
                             <div class="p-3 grid grid-cols-2 gap-6">
                                 <div>
                                     <span class="field-label block mb-1">Axis label</span>
@@ -362,13 +366,14 @@
                                 </div>
                                 <div class="space-y-3">
                                     <div>
-                                        <span class="field-label block mb-1">Range</span>
+                                        <span class="field-label block mb-1">Units</span>
                                         <div class="flex items-center gap-2">
-                                            <input type="number" id="yAxisMin" step="0.5" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-20" placeholder="Min">
-                                            <span>to</span>
-                                            <input type="number" id="yAxisMax" step="0.5" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-20" placeholder="Max">
-                                            <button id="applyYAxisBtn" class="btn-apply">Apply</button>
-                                            <button id="resetYAxisBtn" class="btn-apply">Reset</button>
+                                            <select id="yAxisDivisor" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white" title="Divide values for display, e.g. dekatherms shown as thousands or millions. Prices: leave as-is.">
+                                                <option value="1" selected>as-is</option>
+                                                <option value="1000">thousands (&divide;1,000)</option>
+                                                <option value="1000000">millions (&divide;1,000,000)</option>
+                                                <option value="1000000000">billions (&divide;1,000,000,000)</option>
+                                            </select>
                                         </div>
                                     </div>
                                     <div>
@@ -378,6 +383,16 @@
                                             <span>prefix,</span>
                                             <input type="number" id="yAxisDecimals" value="3" min="0" max="6" step="1" class="w-12 px-1.5 py-0.5 border border-gray-300 text-xs bg-white" title="Decimal places on y-axis values">
                                             <span>decimals</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span class="field-label block mb-1">Range <span class="font-normal normal-case tracking-normal text-gray-400">(in displayed units)</span></span>
+                                        <div class="flex items-center gap-2">
+                                            <input type="number" id="yAxisMin" step="any" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-20" placeholder="Min" title="Lower bound, after the Units divisor is applied">
+                                            <span>to</span>
+                                            <input type="number" id="yAxisMax" step="any" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-20" placeholder="Max" title="Upper bound, after the Units divisor is applied">
+                                            <button id="applyYAxisBtn" class="btn-apply">Apply</button>
+                                            <button id="resetYAxisBtn" class="btn-apply">Reset</button>
                                         </div>
                                     </div>
                                 </div>

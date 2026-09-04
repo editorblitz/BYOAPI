@@ -110,35 +110,128 @@
                 <div class="bg-white border border-gray-300 p-4">
                     <div id="chart"></div>
                 </div>
-                <!-- Chart options (below chart, right-aligned) -->
-                <div id="dateRangeSection" class="hidden mt-2 space-y-1">
-                    <div class="flex items-center justify-end gap-2 text-xs text-gray-500">
-                        <span>Date range:</span>
-                        <input type="date" id="startDate" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white">
-                        <span>to</span>
-                        <input type="date" id="endDate" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white">
-                    </div>
-                    <div class="flex items-center justify-end gap-2 text-xs text-gray-500">
-                        <span>Y-axis interval:</span>
-                        <input type="number" id="yAxisInterval" step="any" min="0" placeholder="Auto" class="w-16 px-1.5 py-0.5 border border-gray-300 text-xs bg-white">
-                    </div>
-                    <div class="flex items-center justify-end gap-2 text-xs text-gray-500">
-                        <span>Y-axis label:</span>
-                        <input type="text" id="yAxisLabel" placeholder="$US/MMBtu" class="w-28 px-1.5 py-0.5 border border-gray-300 text-xs bg-white">
-                    </div>
-                    <div class="flex items-center justify-end gap-2 text-xs text-gray-500">
-                        <span>X-axis interval:</span>
-                        <select id="xAxisLabelMode" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white">
-                            <option value="auto" selected>Auto (default)</option>
-                            <option value="short">Short timeframe</option>
-                            <option value="all">Show every date</option>
-                            <option value="weekly">Weekly (Mondays)</option>
-                        </select>
-                    </div>
-                    <div class="flex justify-end mt-1">
-                        <button id="updateChartBtn" class="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs hover:bg-gray-300 border border-gray-300">
-                            Update
-                        </button>
+                <!-- Chart editing controls (below chart) -->
+                <div id="chartControlsSection" class="hidden mt-2">
+                    <div class="flex justify-between text-xs text-gray-500">
+                        <!-- Left: Title & Legend editors -->
+                        <div class="space-y-2">
+                            <!-- Title Editor -->
+                            <div>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span>Title:</span>
+                                    <label class="flex items-center gap-1 cursor-pointer">
+                                        <input type="checkbox" id="twoLineTitleCheckbox" class="w-3.5 h-3.5">
+                                        <span>Two lines</span>
+                                    </label>
+                                </div>
+                                <div class="flex flex-col gap-1">
+                                    <input id="titleLine1" type="text" class="px-1.5 py-0.5 border border-gray-300 text-sm bg-white w-96">
+                                    <input id="titleLine2" type="text" class="px-1.5 py-0.5 border border-gray-300 text-sm bg-white w-96 hidden">
+                                    <button id="applyTitleBtn" class="mt-0.5 px-2 py-0.5 bg-gray-200 text-gray-600 text-xs hover:bg-gray-300 border border-gray-300 w-fit">
+                                        Apply
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- Legend Labels -->
+                            <div>
+                                <span class="mb-1 block">Legend:</span>
+                                <div id="legendEditorContainer" class="flex flex-col gap-1"></div>
+                                <button id="applyLegendBtn" class="mt-1 px-2 py-0.5 bg-gray-200 text-gray-600 text-xs hover:bg-gray-300 border border-gray-300">
+                                    Apply
+                                </button>
+                            </div>
+                            <!-- Legend Padding -->
+                            <div>
+                                <label class="flex items-center gap-1.5">
+                                    <span>Legend padding:</span>
+                                    <input type="range" id="legendPadding" min="-10" max="25" step="1" value="0" title="Space between the legend and the plot area. Drag left of center to tighten, right to add room. Double-click to reset." class="w-28 accent-gray-600 cursor-pointer">
+                                    <span id="legendPaddingValue" class="w-9 text-right tabular-nums">0%</span>
+                                </label>
+                            </div>
+                            <!-- Y-Axis Label -->
+                            <div>
+                                <span class="mb-1 block">Y-axis label:</span>
+                                <div class="flex flex-col gap-1">
+                                    <input id="yAxisLabelInput" type="text" value="$US/MMBtu" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-48">
+                                    <button id="applyYAxisLabelBtn" class="mt-0.5 px-2 py-0.5 bg-gray-200 text-gray-600 text-xs hover:bg-gray-300 border border-gray-300 w-fit">
+                                        Apply
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- Note / Source -->
+                            <div>
+                                <span class="mb-1 block">Note / Source:</span>
+                                <div class="flex flex-col gap-1">
+                                    <input id="noteInput" type="text" placeholder="Optional note (leave blank to omit)" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-96">
+                                    <input id="sourceInput" type="text" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-96">
+                                    <button id="applyNoteSourceBtn" class="mt-0.5 px-2 py-0.5 bg-gray-200 text-gray-600 text-xs hover:bg-gray-300 border border-gray-300 w-fit">
+                                        Apply
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Right: Date range, axes & checkboxes -->
+                        <div class="space-y-2 text-right">
+                            <!-- Date Range (re-fetches data) -->
+                            <div class="flex items-center gap-2 justify-end">
+                                <span>Date range:</span>
+                                <input type="date" id="startDate" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white">
+                                <span>to</span>
+                                <input type="date" id="endDate" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white">
+                                <button id="updateChartBtn" class="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs hover:bg-gray-300 border border-gray-300">
+                                    Update
+                                </button>
+                            </div>
+                            <!-- Y-Axis Range -->
+                            <div class="flex items-center gap-2 justify-end">
+                                <span>Y-axis:</span>
+                                <input type="number" id="yAxisMin" step="0.5" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-20" placeholder="Min">
+                                <span>to</span>
+                                <input type="number" id="yAxisMax" step="0.5" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-20" placeholder="Max">
+                                <button id="applyYAxisBtn" class="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs hover:bg-gray-300 border border-gray-300">
+                                    Apply
+                                </button>
+                                <button id="resetYAxisBtn" class="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs hover:bg-gray-300 border border-gray-300">
+                                    Reset
+                                </button>
+                            </div>
+                            <!-- Y-Axis Interval -->
+                            <div class="flex items-center gap-2 justify-end">
+                                <span>Y-axis interval:</span>
+                                <input type="number" id="yAxisInterval" step="any" min="0" placeholder="Auto" class="w-16 px-1.5 py-0.5 border border-gray-300 text-xs bg-white">
+                            </div>
+                            <!-- X-Axis Interval -->
+                            <div class="flex items-center gap-2 justify-end">
+                                <span>X-axis interval:</span>
+                                <select id="xAxisLabelMode" class="px-1.5 py-0.5 border border-gray-300 text-xs bg-white">
+                                    <option value="auto" selected>Auto (default)</option>
+                                    <option value="short">Short timeframe</option>
+                                    <option value="all">Show every date</option>
+                                    <option value="weekly">Weekly (Mondays)</option>
+                                    <option value="monthly">Monthly (first trade day)</option>
+                                </select>
+                            </div>
+                            <!-- X-Axis Options -->
+                            <div class="flex flex-col gap-0.5 items-end">
+                                <label class="flex items-center gap-1.5 cursor-pointer">
+                                    <input type="checkbox" id="hideYearCheckbox" class="w-3.5 h-3.5">
+                                    <span>Hide year on x-axis</span>
+                                </label>
+                                <label class="flex items-center gap-1.5 cursor-pointer">
+                                    <input type="checkbox" id="showYearUnderJanCheckbox" class="w-3.5 h-3.5" disabled>
+                                    <span>Show year under first date of year</span>
+                                </label>
+                                <label class="flex items-center gap-1.5 cursor-pointer">
+                                    <input type="checkbox" id="hideDayCheckbox" class="w-3.5 h-3.5">
+                                    <span>Hide day on x-axis</span>
+                                </label>
+                                <label class="flex items-center gap-1.5">
+                                    <span>X-axis padding:</span>
+                                    <input type="range" id="xAxisPadding" min="-15" max="25" step="1" value="0" title="Space below the x-axis labels. Drag left of center to tighten, right to add room. Double-click to reset." class="w-28 accent-gray-600 cursor-pointer">
+                                    <span id="xAxisPaddingValue" class="w-9 text-right tabular-nums">0%</span>
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </main>

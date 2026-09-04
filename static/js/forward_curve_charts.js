@@ -369,12 +369,19 @@ const ForwardCurveCharts = {
         document.getElementById('yAxisInterval').addEventListener('input', () => {
             if (this.fullApiResponse && this.chart) this.rerenderChart();
         });
-        document.getElementById('legendPadding').addEventListener('input', () => {
-            if (this.fullApiResponse && this.chart) this.rerenderChart();
-        });
-        document.getElementById('bottomPadding').addEventListener('input', () => {
-            if (this.fullApiResponse && this.chart) this.rerenderChart();
-        });
+        this.bindPaddingSlider('xAxisPadding', 'xAxisPaddingValue');
+        this.bindPaddingSlider('legendPadding', 'legendPaddingValue');
+    },
+
+    // Range slider with a live "N%" readout; double-click snaps back to 0.
+    bindPaddingSlider: function(sliderId, readoutId) {
+        const slider = document.getElementById(sliderId);
+        const readout = document.getElementById(readoutId);
+        const sync = () => { readout.textContent = `${slider.value}%`; };
+        const rerender = () => { if (this.fullApiResponse && this.chart) this.rerenderChart(); };
+        slider.addEventListener('input', () => { sync(); rerender(); });
+        slider.addEventListener('dblclick', () => { slider.value = '0'; sync(); rerender(); });
+        sync();
     },
 
     addTradeDate: function() {
@@ -836,6 +843,22 @@ const ForwardCurveCharts = {
                         },
                         fill: '#000'
                     }
+                },
+                // Y-axis label pinned near the chart's left edge rather than
+                // anchored to the axis line. With grid.containLabel the tick
+                // labels always start at grid.left, so the gap between this
+                // label and the tick labels stays constant however wide the
+                // prices get (same layout as the custom / multi-location charts).
+                {
+                    type: 'text',
+                    left: '3%',
+                    top: 'middle',
+                    rotation: Math.PI / 2,
+                    style: {
+                        text: '$US/MMBtu',
+                        font: "750 12px 'Inter', Arial, sans-serif",
+                        fill: '#000'
+                    }
                 }
             ],
             tooltip: {
@@ -843,15 +866,16 @@ const ForwardCurveCharts = {
                 axisPointer: { type: 'cross' }
             },
             grid: (() => {
-                const padInput = document.getElementById('legendPadding');
-                const padVal = padInput && padInput.value ? parseFloat(padInput.value) : NaN;
-                const topPad = (!isNaN(padVal) && padVal > 0) ? `${padVal}%` : '25%';
-                const botInput = document.getElementById('bottomPadding');
-                const botVal = botInput && botInput.value ? parseFloat(botInput.value) : NaN;
-                const defaultBot = document.getElementById('hideYearCheckbox').checked ? '10%' : '14%';
-                const botPad = (!isNaN(botVal) && botVal > 0) ? `${botVal}%` : defaultBot;
+                // Sliders are offsets from the default layout (0 = default).
+                // Clamp so negative padding can't pull the plot into the legend
+                // or push the x-axis labels off the bottom.
+                const legendPadding = parseFloat(document.getElementById('legendPadding').value) || 0;
+                const topPad = Math.max(20, 25 + legendPadding) + '%';
+                const xAxisPadding = parseFloat(document.getElementById('xAxisPadding').value) || 0;
+                const defaultBot = document.getElementById('hideYearCheckbox').checked ? 10 : 14;
+                const botPad = Math.max(0, defaultBot + xAxisPadding) + '%';
                 return {
-                    left: '7.1%',
+                    left: '5.5%',
                     right: '4%',
                     top: topPad,
                     bottom: botPad,
@@ -901,14 +925,6 @@ const ForwardCurveCharts = {
             })(),
             yAxis: {
                 type: 'value',
-                name: '$US/MMBtu',
-                nameLocation: 'middle',
-                nameGap: 70,
-                nameTextStyle: {
-                    fontWeight: 750,
-                    fontSize: 12,
-                    color: 'black'
-                },
                 min: adjustedMin,
                 max: adjustedMax,
                 interval: interval,

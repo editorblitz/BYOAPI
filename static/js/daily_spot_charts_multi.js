@@ -7,6 +7,12 @@ const DailyPriceCharts = {
     chart: null,
     compareList: [], // Each item: {val, name, color, style}
     lastApiResponse: null, // Cached for re-rendering on color/style change
+    customLegendLabels: {},
+    customTitle: null, // { line1, line2 } or null for auto
+    customNote: null,  // string or null for auto (auto = no note line)
+    customSource: null, // string or null for auto
+    customYMin: null,  // number or null for auto
+    customYMax: null,  // number or null for auto
 
     // Color palette for multi-line charts (up to 8 colors)
     colorPalette: [
@@ -337,15 +343,69 @@ const DailyPriceCharts = {
                 this.addToCompare(opt.value, name);
             }
         });
-        document.getElementById('generateBtn').addEventListener('click', () => this.handleGenerate());
+        // Sidebar "Generate Chart" resets customizations; the "Update" button beside
+        // the date range re-fetches but keeps title/legend/note/axis customizations.
+        document.getElementById('generateBtn').addEventListener('click', () => this.handleGenerate(false));
         document.getElementById('downloadBtn').addEventListener('click', () => this.downloadChart());
-        document.getElementById('updateChartBtn').addEventListener('click', () => this.handleGenerate());
-        document.getElementById('xAxisLabelMode').addEventListener('change', () => {
-            if (this.lastApiResponse) this.rerenderChart();
+        document.getElementById('updateChartBtn').addEventListener('click', () => this.handleGenerate(true));
+        ['startDate', 'endDate'].forEach(id => {
+            document.getElementById(id).addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') this.handleGenerate(true);
+            });
+        });
+        document.getElementById('xAxisLabelMode').addEventListener('change', () => this.rerenderChart());
+        document.getElementById('yAxisInterval').addEventListener('change', () => this.rerenderChart());
+        document.getElementById('yAxisInterval').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') this.rerenderChart();
+        });
+        document.getElementById('applyTitleBtn').addEventListener('click', () => this.applyTitle());
+        document.getElementById('applyLegendBtn').addEventListener('click', () => this.applyLegendLabels());
+        document.getElementById('applyNoteSourceBtn').addEventListener('click', () => this.applyNoteSource());
+        ['noteInput', 'sourceInput'].forEach(id => {
+            document.getElementById(id).addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') this.applyNoteSource();
+            });
+        });
+        document.getElementById('applyYAxisLabelBtn').addEventListener('click', () => this.applyYAxisLabel());
+        document.getElementById('yAxisLabelInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') this.applyYAxisLabel();
         });
         document.getElementById('exportColorsBtn').addEventListener('click', () => this.exportColors());
         document.getElementById('importColorsBtn').addEventListener('click', () => document.getElementById('importColorsFile').click());
         document.getElementById('importColorsFile').addEventListener('change', (e) => this.importColors(e));
+        document.getElementById('applyYAxisBtn').addEventListener('click', () => this.applyYAxis());
+        document.getElementById('resetYAxisBtn').addEventListener('click', () => this.resetYAxis());
+        ['yAxisMin', 'yAxisMax'].forEach(id => {
+            document.getElementById(id).addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') this.applyYAxis();
+            });
+        });
+        document.getElementById('hideYearCheckbox').addEventListener('change', (e) => {
+            const sub = document.getElementById('showYearUnderJanCheckbox');
+            sub.disabled = !e.target.checked;
+            if (!e.target.checked) sub.checked = false;
+            this.rerenderChart();
+        });
+        document.getElementById('showYearUnderJanCheckbox').addEventListener('change', () => this.rerenderChart());
+        document.getElementById('hideDayCheckbox').addEventListener('change', () => this.rerenderChart());
+        this.bindPaddingSlider('xAxisPadding', 'xAxisPaddingValue');
+        this.bindPaddingSlider('legendPadding', 'legendPaddingValue');
+
+        // Two-line title checkbox toggles second input
+        document.getElementById('twoLineTitleCheckbox').addEventListener('change', (e) => {
+            document.getElementById('titleLine2').classList.toggle('hidden', !e.target.checked);
+            if (e.target.checked) {
+                const line2 = document.getElementById('titleLine2');
+                if (!line2.value) line2.value = 'Daily Natural Gas Prices';
+            }
+        });
+
+        // Enter key in title inputs triggers apply
+        ['titleLine1', 'titleLine2'].forEach(id => {
+            document.getElementById(id).addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') this.applyTitle();
+            });
+        });
     },
 
     addToCompare: function(val, name) {
@@ -436,7 +496,7 @@ const DailyPriceCharts = {
         });
     },
 
-    handleGenerate: async function() {
+    handleGenerate: async function(preserveCustomizations = false) {
         try {
             if (this.compareList.length === 0) {
                 alert('Please add at least one location to compare.');
@@ -480,12 +540,26 @@ const DailyPriceCharts = {
             this.log(`Received ${totalPoints} total data points across ${data.series.length} series.`);
 
             this.lastApiResponse = data;
+
+            // Setup editing controls (reset on Generate, keep on date-range Update)
+            if (!preserveCustomizations) {
+                this.customTitle = null;
+                this.customLegendLabels = {};
+                this.customNote = null;
+                this.customSource = null;
+                this.customYMin = null;
+                this.customYMax = null;
+                document.getElementById('yAxisMin').value = '';
+                document.getElementById('yAxisMax').value = '';
+            }
+            this.setupTitleEditor();
+            this.setupLegendEditor();
+            this.setupNoteSource();
+            document.getElementById('chartControlsSection').classList.remove('hidden');
+            document.getElementById('downloadBtn').classList.remove('hidden');
+
             this.renderChart(data);
             this.log(`Chart rendered: <strong>750×400px</strong> display (aspect ratio 15:8) • Exports as <strong>828×447px WebP</strong>`);
-
-            // Show download button and date range section
-            document.getElementById('downloadBtn').classList.remove('hidden');
-            document.getElementById('dateRangeSection').classList.remove('hidden');
 
             // Update date inputs to show actual data range
             if (data.series && data.series.length > 0 && data.series[0].dates.length > 0) {
@@ -534,22 +608,52 @@ const DailyPriceCharts = {
             allPrices = allPrices.concat(validPrices);
         });
 
-        const minPrice = Math.min(...allPrices);
-        const maxPrice = Math.max(...allPrices);
+        if (allPrices.length === 0) {
+            this.log('<span class="text-red-400">No prices available for the selected date range.</span>');
+            return;
+        }
+        const dataMin = Math.min(...allPrices);
+        const dataMax = Math.max(...allPrices);
 
+        // Y-axis bounds (use custom overrides if set)
+        const minPrice = this.customYMin !== null ? this.customYMin : dataMin;
+        const maxPrice = this.customYMax !== null ? this.customYMax : dataMax;
         const yAxisInput = document.getElementById('yAxisInterval');
         const customInterval = yAxisInput && yAxisInput.value ? parseFloat(yAxisInput.value) : null;
         const interval = (customInterval && customInterval > 0) ? customInterval : this.calculateYAxisInterval(minPrice, maxPrice);
         const adjustedMinPrice = Math.floor(minPrice / interval) * interval;
         const adjustedMaxPrice = Math.ceil(maxPrice / interval) * interval;
 
-        // Reformat dates to DD-Mon-YYYY
+        // Title / layout
+        const titleText = this.getTitleText();
+        const isTwoLine = titleText.includes('\n');
+        const dividerTop = isTwoLine ? 73 : 63;
+        const legendTop = isTwoLine ? 80 : 72;
+        const legendPadding = parseFloat(document.getElementById('legendPadding').value) || 0;
+        // Clamp so negative padding can't pull the plot up into the legend text.
+        const gridTopMin = isTwoLine ? 23 : 21;
+        const gridTop = Math.max(gridTopMin, (isTwoLine ? 31 : 27) + legendPadding) + '%';
+
+        // Note / Source (note line is omitted when blank)
+        const noteText = (this.customNote !== null ? this.customNote : this.getDefaultNote()).trim();
+        const sourceText = (this.customSource !== null ? this.customSource : this.getDefaultSource()).trim();
+        const xAxisPadding = parseFloat(document.getElementById('xAxisPadding').value) || 0;
+        const gridBottom = Math.max(0, (noteText ? 14 : 10) + xAxisPadding) + '%';
+        const yAxisLabel = (document.getElementById('yAxisLabelInput').value || '').trim() || '$US/MMBtu';
+
+        // X-axis label options
+        const hideYear = document.getElementById('hideYearCheckbox').checked;
+        const hideDay = document.getElementById('hideDayCheckbox').checked;
+        const showYearUnderEl = document.getElementById('showYearUnderJanCheckbox');
+        const showYearUnder = hideYear && showYearUnderEl && showYearUnderEl.checked;
+
+        // Reformat dates to DD-Mon-YYYY (full label, used for tooltips)
+        const monthMap = {
+            '01': 'Jan', '02': 'Feb', '03': 'Mar', '04': 'Apr', '05': 'May', '06': 'Jun',
+            '07': 'Jul', '08': 'Aug', '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Dec'
+        };
         const reformattedDates = limitedDates.map(dateStr => {
             const [year, month, day] = dateStr.split('-');
-            const monthMap = {
-                '01': 'Jan', '02': 'Feb', '03': 'Mar', '04': 'Apr', '05': 'May', '06': 'Jun',
-                '07': 'Jul', '08': 'Aug', '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Dec'
-            };
             return `${day}-${monthMap[month]}-${year}`;
         });
 
@@ -557,13 +661,36 @@ const DailyPriceCharts = {
         const labelMode = labelModeEl ? labelModeEl.value : 'auto';
         const labelIndexSet = this.calculateLabelIndices(limitedDates, labelMode);
 
+        // Build the visible label text per index, honoring hide year / hide day.
+        // When "show year under first date of year" is on, the year goes under the
+        // FIRST VISIBLE label of each year (visible = in labelIndexSet).
+        const labelTextByIndex = {};
+        const seenYears = new Set();
+        const visibleIndices = Array.from(labelIndexSet).sort((a, b) => a - b);
+        visibleIndices.forEach(i => {
+            const [year, month, day] = limitedDates[i].split('-');
+            const mon = monthMap[month];
+            let text;
+            if (hideYear && hideDay) text = mon;
+            else if (hideYear) text = `${day}-${mon}`;
+            else if (hideDay) text = `${mon}-${year}`;
+            else text = `${day}-${mon}-${year}`;
+            if (showYearUnder && !seenYears.has(year)) {
+                seenYears.add(year);
+                text += '\n' + year;
+            }
+            labelTextByIndex[i] = text;
+        });
+        // Horizontal labels when they are short enough to fit; rotated otherwise.
+        const compact = showYearUnder || ((hideYear || hideDay) && visibleIndices.length <= 13);
+
         // Build series with per-item colors and styles
         const series = limitedSeries.map((s, idx) => {
             const item = this.compareList[idx];
             const seriesColor = item ? item.color : this.colorPalette[idx % this.colorPalette.length];
             const lineStyle = item ? item.style : 'solid';
             return {
-                name: s.location_name,
+                name: this.customLegendLabels[s.location_name] || s.location_name,
                 type: 'line',
                 data: s.averages.map(value => isNaN(value) || value === null ? null : value),
                 color: seriesColor,
@@ -589,17 +716,18 @@ const DailyPriceCharts = {
                 fontFamily: "'Inter', Arial, sans-serif"
             },
             title: [{
-                text: "NGI's Daily Natural Gas Prices",
+                text: titleText,
                 left: '3%',
                 top: '10',
                 textStyle: {
                     color: '#003A50',
                     fontWeight: 'bold',
-                    fontSize: 24
+                    fontSize: isTwoLine ? 21 : 24,
+                    lineHeight: isTwoLine ? 24 : 28
                 }
             }],
             legend: {
-                top: '72',
+                top: legendTop,
                 left: 'center',
                 textStyle: {
                     fontFamily: "'Inter', Arial, sans-serif",
@@ -610,12 +738,13 @@ const DailyPriceCharts = {
                 itemWidth: 28,
                 itemHeight: 12,
                 itemGap: 16,
-                data: limitedSeries.map((s, idx) => {
+                data: series.map((s, idx) => {
                     const item = this.compareList[idx];
                     const lineStyle = item ? item.style : 'solid';
                     return {
-                        name: s.location_name,
-                        icon: this.legendIcons[lineStyle] || this.legendIcons.solid
+                        name: s.name,
+                        icon: this.legendIcons[lineStyle] || this.legendIcons.solid,
+                        itemStyle: { color: s.color }
                     };
                 })
             },
@@ -633,7 +762,7 @@ const DailyPriceCharts = {
                 {
                     type: 'group',
                     left: 'center',
-                    top: 63,
+                    top: dividerTop,
                     children: [{
                         type: 'rect',
                         z: 100,
@@ -648,12 +777,29 @@ const DailyPriceCharts = {
                         }
                     }]
                 },
+                ...(noteText ? [{
+                    type: 'text',
+                    left: '3.5%',
+                    bottom: '7%',
+                    style: {
+                        text: `{bold|Note:} ${noteText}`,
+                        font: "12px 'Inter', Arial, sans-serif",
+                        rich: {
+                            bold: {
+                                fontWeight: 'bold',
+                                fontSize: 12,
+                                fontFamily: "'Inter', Arial, sans-serif"
+                            }
+                        },
+                        fill: '#000'
+                    }
+                }] : []),
                 {
                     type: 'text',
                     left: '3.5%',
                     bottom: '1.6%',
                     style: {
-                        text: "{bold|Source:} NGI's Daily Gas Price Index",
+                        text: `{bold|Source:} ${sourceText}`,
                         font: "14px 'Inter', Arial, sans-serif",
                         rich: {
                             bold: {
@@ -662,6 +808,22 @@ const DailyPriceCharts = {
                                 fontFamily: "'Inter', Arial, sans-serif"
                             }
                         },
+                        fill: '#000'
+                    }
+                },
+                // Y-axis label pinned near the chart's left edge rather than
+                // anchored to the axis line. With grid.containLabel the tick
+                // labels always start at grid.left, so the gap between this
+                // label and the tick labels stays constant however wide the
+                // prices get (same layout as the custom / forward-multi charts).
+                {
+                    type: 'text',
+                    left: '3%',
+                    top: 'middle',
+                    rotation: Math.PI / 2,
+                    style: {
+                        text: yAxisLabel,
+                        font: "750 12px 'Inter', Arial, sans-serif",
                         fill: '#000'
                     }
                 }
@@ -673,10 +835,10 @@ const DailyPriceCharts = {
                 }
             },
             grid: {
-                left: '7.7%',
+                left: '5.5%',
                 right: '4%',
-                top: '27%',
-                bottom: '10%',
+                top: gridTop,
+                bottom: gridBottom,
                 containLabel: true
             },
             xAxis: {
@@ -684,11 +846,14 @@ const DailyPriceCharts = {
                 boundaryGap: false,
                 data: reformattedDates,
                 axisLabel: {
-                    rotate: 45,
+                    rotate: compact ? 0 : 45,
                     interval: (index) => labelIndexSet.has(index),
-                    verticalAlign: 'top',
-                    align: 'right',
-                    fontSize: 13,
+                    formatter: (value, index) => labelTextByIndex[index] || '',
+                    verticalAlign: showYearUnder ? 'top' : (compact ? 'middle' : 'top'),
+                    align: compact ? 'center' : 'right',
+                    margin: compact ? 14 : 8,
+                    fontSize: compact ? 14 : 13,
+                    lineHeight: showYearUnder ? 18 : undefined,
                     fontWeight: 550,
                     color: 'black'
                 },
@@ -707,14 +872,6 @@ const DailyPriceCharts = {
             },
             yAxis: {
                 type: 'value',
-                name: (document.getElementById('yAxisLabel') && document.getElementById('yAxisLabel').value.trim()) || '$US/MMBtu',
-                nameLocation: 'middle',
-                nameGap: 70,
-                nameTextStyle: {
-                    fontWeight: 750,
-                    fontSize: 12,
-                    color: 'black'
-                },
                 min: adjustedMinPrice,
                 max: adjustedMaxPrice,
                 interval: interval,
@@ -795,6 +952,20 @@ const DailyPriceCharts = {
             return indices;
         }
 
+        if (mode === 'monthly') {
+            // First data point of each calendar month (first index is always labeled).
+            const indices = new Set();
+            let lastMonth = null;
+            for (let i = 0; i < n; i++) {
+                const ym = isoDates[i].slice(0, 7);
+                if (ym !== lastMonth) {
+                    indices.add(i);
+                    lastMonth = ym;
+                }
+            }
+            return indices;
+        }
+
         if (mode === 'weekly') {
             // Snap to Mondays (nearest data point), pin first + last.
             const timestamps = isoDates.map(s => new Date(s + 'T00:00:00').getTime());
@@ -826,6 +997,125 @@ const DailyPriceCharts = {
         }
         indices.add(lastIdx);
         return indices;
+    },
+
+    // Range slider with a live "N%" readout; double-click snaps back to 0.
+    bindPaddingSlider: function(sliderId, readoutId) {
+        const slider = document.getElementById(sliderId);
+        const readout = document.getElementById(readoutId);
+        const sync = () => { readout.textContent = `${slider.value}%`; };
+        slider.addEventListener('input', () => { sync(); this.rerenderChart(); });
+        slider.addEventListener('dblclick', () => { slider.value = '0'; sync(); this.rerenderChart(); });
+        sync();
+    },
+
+    getDefaultTitle: function() {
+        return "NGI's Daily Natural Gas Prices";
+    },
+
+    setupTitleEditor: function() {
+        const twoLine = document.getElementById('twoLineTitleCheckbox').checked;
+        if (this.customTitle) {
+            document.getElementById('titleLine1').value = this.customTitle.line1;
+            document.getElementById('titleLine2').value = this.customTitle.line2 || '';
+        } else {
+            document.getElementById('titleLine1').value = this.getDefaultTitle();
+            document.getElementById('titleLine2').value = '';
+        }
+        document.getElementById('titleLine2').classList.toggle('hidden', !twoLine);
+    },
+
+    applyTitle: function() {
+        const twoLine = document.getElementById('twoLineTitleCheckbox').checked;
+        const line1 = document.getElementById('titleLine1').value.trim();
+        const line2 = twoLine ? document.getElementById('titleLine2').value.trim() : '';
+        this.customTitle = { line1, line2 };
+        this.rerenderChart();
+        this.log('Title updated.');
+    },
+
+    getTitleText: function() {
+        if (this.customTitle) {
+            if (this.customTitle.line2) return this.customTitle.line1 + '\n' + this.customTitle.line2;
+            return this.customTitle.line1;
+        }
+        return this.getDefaultTitle();
+    },
+
+    setupLegendEditor: function() {
+        const container = document.getElementById('legendEditorContainer');
+        container.innerHTML = '';
+        if (!this.lastApiResponse || !this.lastApiResponse.series) return;
+
+        this.lastApiResponse.series.forEach(s => {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = this.customLegendLabels[s.location_name] || s.location_name;
+            input.dataset.originalName = s.location_name;
+            input.className = 'px-1.5 py-0.5 border border-gray-300 text-xs bg-white w-64';
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') this.applyLegendLabels();
+            });
+            container.appendChild(input);
+        });
+    },
+
+    applyLegendLabels: function() {
+        const inputs = document.querySelectorAll('#legendEditorContainer input');
+        this.customLegendLabels = {};
+        inputs.forEach(input => {
+            const original = input.dataset.originalName;
+            const custom = input.value.trim();
+            if (custom && custom !== original) {
+                this.customLegendLabels[original] = custom;
+            }
+        });
+        this.rerenderChart();
+        this.log('Legend labels updated.');
+    },
+
+    getDefaultNote: function() {
+        return '';
+    },
+
+    getDefaultSource: function() {
+        return "NGI's Daily Gas Price Index";
+    },
+
+    setupNoteSource: function() {
+        document.getElementById('noteInput').value = this.customNote !== null ? this.customNote : this.getDefaultNote();
+        document.getElementById('sourceInput').value = this.customSource !== null ? this.customSource : this.getDefaultSource();
+    },
+
+    applyNoteSource: function() {
+        this.customNote = document.getElementById('noteInput').value.trim();
+        this.customSource = document.getElementById('sourceInput').value.trim();
+        this.rerenderChart();
+        this.log('Note/Source updated.');
+    },
+
+    applyYAxisLabel: function() {
+        this.rerenderChart();
+        this.log('Y-axis label updated.');
+    },
+
+    applyYAxis: function() {
+        const minVal = document.getElementById('yAxisMin').value;
+        const maxVal = document.getElementById('yAxisMax').value;
+        this.customYMin = minVal !== '' ? parseFloat(minVal) : null;
+        this.customYMax = maxVal !== '' ? parseFloat(maxVal) : null;
+        this.rerenderChart();
+        this.log('Y-axis range updated.');
+    },
+
+    resetYAxis: function() {
+        this.customYMin = null;
+        this.customYMax = null;
+        document.getElementById('yAxisMin').value = '';
+        document.getElementById('yAxisMax').value = '';
+        document.getElementById('yAxisInterval').value = '';
+        this.rerenderChart();
+        this.log('Y-axis range and interval reset to auto.');
     },
 
     downloadChart: function() {

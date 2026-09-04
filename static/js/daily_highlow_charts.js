@@ -542,6 +542,22 @@ const DailyHighLowCharts = {
                         },
                         fill: '#000'
                     }
+                },
+                // Y-axis label pinned near the chart's left edge rather than
+                // anchored to the axis line. With grid.containLabel the tick
+                // labels always start at grid.left, so the gap between this
+                // label and the tick labels stays constant however wide the
+                // prices get (same layout as the custom / multi-location charts).
+                {
+                    type: 'text',
+                    left: '3%',
+                    top: 'middle',
+                    rotation: Math.PI / 2,
+                    style: {
+                        text: (document.getElementById('yAxisLabel') && document.getElementById('yAxisLabel').value.trim()) || '$US/MMBtu',
+                        font: '750 12px Arial',
+                        fill: '#000'
+                    }
                 }
             ],
             tooltip: {
@@ -560,7 +576,7 @@ const DailyHighLowCharts = {
                 }
             },
             grid: {
-                left: '7.7%',
+                left: '5.5%',
                 right: '4%',
                 top: '28%',
                 bottom: '8%',
@@ -594,14 +610,6 @@ const DailyHighLowCharts = {
             },
             yAxis: {
                 type: 'value',
-                name: (document.getElementById('yAxisLabel') && document.getElementById('yAxisLabel').value.trim()) || '$US/MMBtu',
-                nameLocation: 'middle',
-                nameGap: 70,
-                nameTextStyle: {
-                    fontWeight: 750,
-                    fontSize: 12,
-                    color: 'black'
-                },
                 min: adjustedMinPrice,
                 max: adjustedMaxPrice,
                 interval: interval,

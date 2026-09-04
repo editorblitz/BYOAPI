@@ -168,12 +168,14 @@
                         <input type="number" id="yAxisInterval" step="any" min="0" placeholder="Auto" class="w-16 px-1.5 py-0.5 border border-gray-300 text-xs bg-white">
                     </div>
                     <div class="flex items-center justify-end gap-2 text-xs text-gray-500">
-                        <span>Legend padding (%):</span>
-                        <input type="number" id="legendPadding" step="1" min="20" max="60" placeholder="25" class="w-16 px-1.5 py-0.5 border border-gray-300 text-xs bg-white">
+                        <span>Legend padding:</span>
+                        <input type="range" id="legendPadding" min="-10" max="25" step="1" value="0" title="Space between the legend and the plot area. Drag left of center to tighten, right to add room. Double-click to reset." class="w-28 accent-gray-600 cursor-pointer">
+                        <span id="legendPaddingValue" class="w-9 text-right tabular-nums">0%</span>
                     </div>
                     <div class="flex items-center justify-end gap-2 text-xs text-gray-500">
-                        <span>Bottom padding (%):</span>
-                        <input type="number" id="bottomPadding" step="1" min="8" max="40" placeholder="Auto" class="w-16 px-1.5 py-0.5 border border-gray-300 text-xs bg-white">
+                        <span>X-axis padding:</span>
+                        <input type="range" id="xAxisPadding" min="-15" max="25" step="1" value="0" title="Space below the x-axis labels. Drag left of center to tighten, right to add room. Double-click to reset." class="w-28 accent-gray-600 cursor-pointer">
+                        <span id="xAxisPaddingValue" class="w-9 text-right tabular-nums">0%</span>
                     </div>
                     <div class="flex items-center justify-end gap-2 text-xs text-gray-500">
                         <span>X-axis interval:</span>
